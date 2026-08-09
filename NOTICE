@@ -1,0 +1,21 @@
+不要看上我的菊（Soviet Ju） Agent Skills
+Copyright (C) 2026 Junus
+
+This repository is a collection of the author's own works: documentation,
+SKILL.md instruction files, Lua/shader reference templates, and helper
+scripts. It contains NO third-party game assets, no decompiled or
+redistributed game data, and no material taken from Don't Starve Together,
+Klei Entertainment, or any other party. Game source code and assets are
+referenced only as read-only local paths on the user's machine and are
+never distributed here.
+
+The DST-related skill descriptions reference the game's data/scripts tree
+purely as a runtime target for the user's own mod development; nothing from
+that tree is included in this repository.
+
+When you convey a copy of this program or a work based on it, this NOTICE
+should accompany the GPL-3.0-or-later LICENSE text.
+
+本仓库为作者自有作品：包含本文档、SKILL.md、Lua/Shader 参考模板与辅助脚本，
+不含任何第三方游戏素材、反编译数据，也不含 Don't Starve Together 或 Klei
+的任何受许可材料。游戏源码与素材仅作为用户本机只读路径被引用，从不复制入库。
