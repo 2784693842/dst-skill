@@ -4,7 +4,7 @@ description: 分发到对应的 DST 模组技能（dst-*）
 
 <!--
   不要看上我的菊（Soviet Ju） Agent Skills — /dst 分发命令
-  Original author unknown; redistributed by Junus, 2026
+  Original author unknown; redistributed by Soviet Ju, 2026
 
   This command file is part of the 不要看上我的菊（Soviet Ju） Agent Skills package,
   licensed under the GNU General Public License v3.0-or-later (SPDX:
