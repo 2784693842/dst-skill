@@ -12,7 +12,7 @@ description: Use when creating or extending DST stategraphs — SG files, State,
 1. 从相同实体类型和相同动作的原版 SG 状态开始，记录进入条件、标签、动画、时间线、退出路径和事件。
 2. 独立 SG 使用 stategraphs/SGmod_entity.lua 模块名，并让 inst:SetStateGraph('SGmod_entity') 与文件名一致；StateGraph 内部名称使用 mod_entity。
 3. 用 State 定义唯一名称、tags、onenter、timeline、events、ontimeout 和 onexit；所有临时数据放入 inst.sg.statemem。
-4. 为非 instant BufferedAction 提供 ActionHandler。PushBufferedAction 调用 StartAction 查找 actionhandlers，普通 doaction EventHandler 不能替代它。
+4. 为非 instant BufferedAction 提供 ActionHandler。PushBufferedAction 调用 StartAction 查找 actionhandlers，普通 doaction EventHandler 不能替代它。自定义动作由 modutil.lua 的 AddAction 注册，再经 AddStategraphActionHandler(SGName, action, handler) 挂到 SG。
 5. onenter 验证参数与组件并启动动作；TimeEvent 使用 FRAMES 或明确秒数，权威副作用只在服务器 SG 的单一时间点执行。
 6. 为动画结束、timeout、attacked、death 和动作取消提供明确转移；onexit 对称撤销物理、控制、视觉、任务、声音和临时标签。
 7. 修改玩家动作时同时检查 SGwilson 与客户端 SG，验证预测、回正和 ServerStateMatches。

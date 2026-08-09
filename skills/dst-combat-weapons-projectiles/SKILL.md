@@ -37,3 +37,7 @@ description: Use when implementing DST combat — combat/health/weapon/armor com
 - 高延迟和目标快速移动时不会双重命中。
 - 投射物命中、落空、被移除和跨平台路径均结束干净。
 
+## 按需资源
+
+- 需要具体 API 签名、最小武器或投射物代码时读取 references/combat-contract.md（对照真实源码核对）。
+

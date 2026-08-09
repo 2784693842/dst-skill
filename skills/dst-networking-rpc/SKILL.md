@@ -42,3 +42,4 @@ description: Use when implementing or debugging DST multiplayer replication and 
 ## 按需资源
 
 - 需要方向、权威与 Replica 选择时读取 references/network-contract.md。
+- 需要带 netvar 的最小 Prefab 骨架时复制 assets/networking-prefab-template.lua（对照原版 firepit.lua 的 SetPristine 顺序）。

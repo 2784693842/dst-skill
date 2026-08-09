@@ -1,16 +1,33 @@
 [CmdletBinding()]
 param(
-    [string]$Root = 'D:\steam\steamapps\common\Don''t Starve Together\data\scripts',
+    [string]$Root = '',
     [ValidateSet('Summary', 'Files', 'Symbol')]
     [string]$Mode = 'Summary',
     [string]$Pattern,
     [string]$Glob = '*.lua'
 )
 
-$resolvedRoot = (Resolve-Path -LiteralPath $Root -ErrorAction Stop).Path
-if (-not (Test-Path -LiteralPath (Join-Path $resolvedRoot 'main.lua') -PathType Leaf)) {
-    throw ('The root does not look like a DST data/scripts directory: ' + $resolvedRoot)
+$candidates = @(
+    $Root,
+    'D:\steam\steamapps\common\Don''t Starve Together\data\scripts',
+    'D:\SteamLibrary\steamapps\common\Don''t Starve Together\data\scripts',
+    'D:\SteamLibrary\steamapps\common\Don''t Starve Together\data\databundles\scripts'
+) | Where-Object { $_ -ne '' }
+
+$resolvedRoot = $null
+foreach ($c in $candidates) {
+    if (-not (Test-Path -LiteralPath $c -PathType Container)) { continue }
+    $maybeRoot = (Resolve-Path -LiteralPath $c -ErrorAction SilentlyContinue).Path
+    if ($null -eq $maybeRoot) { continue }
+    if (Test-Path -LiteralPath (Join-Path $maybeRoot 'main.lua') -PathType Leaf) {
+        $resolvedRoot = $maybeRoot
+        break
+    }
 }
+if ($null -eq $resolvedRoot) {
+    throw 'DST source root not found. Pass -Root to the directory containing main.lua (data/scripts or data/databundles/scripts).'
+}
+Write-Host ('DST source root: ' + $resolvedRoot)
 
 switch ($Mode) {
     'Summary' {

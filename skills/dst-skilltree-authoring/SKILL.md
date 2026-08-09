@@ -36,7 +36,7 @@ CreateSkillTreeFor 为非 lock_open、非 infographic 节点从 rpc_id 0 开始�
 - skilltreedata.lua、prefabs/skilltree_defs.lua：技能树注册与公共定义。
 - prefabs/skilltree_*.lua：角色节点范例。
 - components/skilltreeupdater.lua：角色侧更新。
-- widgets/redux/skilltreewidget.lua、skilltreebuilder.lua 与 skilltreepanel.lua：UI。
+- widgets/redux/skilltreewidget.lua、skilltreebuilder.lua 与 screens/redux/panels/skilltreepanel.lua：UI。
 - modutil.lua：RegisterSkilltreeBGForCharacter、RegisterSkilltreeIconsAtlas。
 
 ## 不变量

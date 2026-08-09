@@ -10,7 +10,7 @@ description: Use when creating DST world-generation content — modworldgenmain.
 ## 工作流
 
 1. 确认内容属于森林、洞穴或自定义 Location，并确定只影响新世界还是也需要旧世界 Retrofit。
-2. 在 modworldgenmain.lua 使用 AddTaskSet、AddTask、AddRoom、AddLevel、AddLocation 或对应 PreInit 钩子。
+2. 在 modworldgenmain.lua 使用 AddTaskSet、AddTask、AddRoom、AddLevel、AddLocation、AddStartLocation 或对应 PreInit 钩子。
 3. 从 map/tasksets、tasks、rooms 和 levels 中选择最接近范例，保持 Room distribution、Task keys/locks 与 TaskSet 顺序一致。
 4. 用锁钥图表达拓扑依赖，检查每个关键资源、起点和出口均可从起始区域到达。
 5. 世界生成逻辑只使用该环境可用的数据与函数，不依赖 TheWorld、玩家或运行时组件。

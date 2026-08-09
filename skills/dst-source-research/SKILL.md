@@ -9,7 +9,7 @@ description: Use when researching the installed DST Lua source as ground truth �
 
 ## 工作流
 
-1. 确认源码根目录。默认使用 D:\steam\steamapps\common\Don't Starve Together\data\scripts；先验证 main.lua、modutil.lua 与目标子目录存在。
+1. 定位源码根目录。先探测本机真实安装位置，不要假定写死的路径：候选依次为 `D:\steam\steamapps\common\Don't Starve Together\data\scripts`（旧布局）、`...\data\databundles\scripts`（新版打包布局）、`D:\SteamLibrary\steamapps\common\Don't Starve Together\data\scripts` 等。逐个验证 main.lua、modutil.lua 与目标子目录是否存在，取第一个命中的作为基准并记录；找不到时让用户告知游戏安装路径，禁止臆造源码路径。
 2. 把问题归入 Prefab、Component、Brain、Behaviour、StateGraph、Action、Network、UI、Worldgen 或引擎原生绑定，再缩小搜索范围。
 3. 先用 rg --files 找候选文件，再用 rg -n 搜符号定义、require、构造调用、标签、事件和组件名；避免直接倾倒整个大文件。
 4. 从入口沿 require、Class、Prefab、AddComponent、ListenForEvent、SetBrain、SetStateGraph 和 ActionHandler 追踪到实际执行点。

@@ -1,6 +1,6 @@
 ---
 name: dst-events-tasks-lifecycle
-description: Use when managing DST events, tasks, and lifecycle — ListenForEvent/RemoveEventCallback, WatchWorldState, DoTaskInTime/DoPeriodicTask, component updates, sleep and wake transitions, delayed actions, or diagnosing leaked callbacks and removed-entity errors. 中文触发：事件、定时器、任务、回调泄漏、实体移除、睡眠唤醒、清理。信号：ListenForEvent、WatchWorldState、DoTaskInTime、DoPeriodicTask、OnRemoveEntity、scheduler.lua。
+description: Use when managing DST events, tasks, and lifecycle — ListenForEvent/RemoveEventCallback, WatchWorldState, DoTaskInTime/DoPeriodicTask, component updates, sleep and wake transitions, delayed actions, or diagnosing leaked callbacks and removed-entity errors. 中文触发：事件、定时器、延时任务、DoTaskInTime、DoPeriodicTask、回调、调度、回调泄漏、实体移除、睡眠唤醒、清理。信号：ListenForEvent、WatchWorldState、DoTaskInTime、DoPeriodicTask、OnRemoveEntity、scheduler.lua。
 ---
 
 # DST 事件、任务与生命周期
