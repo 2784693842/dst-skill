@@ -3,14 +3,14 @@ description: 分发到对应的 DST 模组技能（dst-*）
 ---
 
 <!--
-  不要看上我的菊（Soviet Ju） Agent Skills — /dst 分发命令
-  Original author unknown; redistributed by Soviet Ju, 2026
+  不要看上我的菊 Agent Skills — /dst 分发命令
+  Original author unknown
 
-  This command file is part of the 不要看上我的菊（Soviet Ju） Agent Skills package,
+  This command file is part of the 不要看上我的菊 Agent Skills package,
   licensed under the GNU General Public License v3.0-or-later (SPDX:
   GPL-3.0-or-later). See the LICENSE file in the repository root.
 
-  本命令文件是 不要看上我的菊（Soviet Ju）Agent Skills 发布包的一部分，
+  本命令文件是 不要看上我的菊 Agent Skills 发布包的一部分，
   以 GNU GPL v3.0 或更高版本（SPDX: GPL-3.0-or-later）授权，全文见仓库根目录 LICENSE。
 -->
 

@@ -42,7 +42,7 @@ npx skills add <owner>/<repo> --skill dst-component-authoring --skill dst-networ
 
 ## 来源说明 / Notes
 
-本仓库内容原为社区贡献，作者不详，由 Soviet Ju 收集整理并重新发布：
+本仓库内容原为社区贡献，作者不详：
 
 - 原始技能内容来源于社区流传的 DST 模组开发 Skill 集合。
 - 删除了 Codex 专用的 `agents/openai.yaml` 残留。
