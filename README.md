@@ -40,10 +40,11 @@ npx skills add <owner>/<repo> --skill dst-component-authoring --skill dst-networ
 - **中文/英文混合**：说明文字为中文，代码标识符保持原样；交互语言由智能体语言设置决定。
 - **`/dst` 命令（可选）**：本仓库附带 `/.claude/commands/dst.md`——一个 Claude Code 分发入口，你只需输入 `/dst <任务>`，模型自动挑对技能。该文件是 Claude Code 专用命令，不影响其他智能体，也不会被本仓库的技能发现逻辑误读（已验证只发现 45 个技能）。
 
-## 继承说明 / Notes
+## 来源说明 / Notes
 
-本仓库由 `Downloads/饥荒模组SKILLS`（Codex 版本）迁移而来：
+本仓库内容原为社区贡献，作者不详，由 Junus 收集整理并重新发布：
 
+- 原始技能内容来源于社区流传的 DST 模组开发 Skill 集合。
 - 删除了 Codex 专用的 `agents/openai.yaml` 残留。
 - 重写了全部 45 个 `description` 为「`Use when … + 中文触发 + 信号」触发优先格式。
 - 全部通过 `npx skills add <本目录> --list` 验证（45/45 可发现）。
@@ -64,8 +65,8 @@ npx skills use <owner>/<repo> --skill dst-stategraph-authoring
 
 本仓库以 **GNU General Public License v3.0 或更高版本** 授权（**SPDX: GPL-3.0-or-later**）。
 
-- 完整协议文本见根目录 [`LICENSE`](./LICENSE)，版权声明见 [`COPYING`](./COPYING) 与 [`NOTICE`](./NOTICE)。
-- 本仓库为作者自有作品：含 SKILL.md、参考模板与辅助脚本，不含第三方受许可保护的游戏素材，也不包含任何来自 Don't Starve Together / Klei 的受许可代码或数据。
+- 完整协议文本见根目录 [`LICENSE`](./LICENSE)，版权信息见 [`COPYING`](./COPYING) 与 [`NOTICE`](./NOTICE)。
+- 本仓库内容为社区贡献的收集整理，原作者不详；不含第三方受许可保护的游戏素材，也不包含任何来自 Don't Starve Together / Klei 的受许可代码或数据。
 - 以 GPL-3.0-or-later 发布意味着：你可以自由使用、修改与再分发，但基于本仓库的衍生作品必须以相同许可证发布。
 
-This repository is licensed under the **GNU GPL v3.0-or-later** (SPDX: GPL-3.0-or-later). See [`LICENSE`](./LICENSE), [`COPYING`](./COPYING) and [`NOTICE`](./NOTICE). The content is the author's own work and contains no third-party or game-licensed assets; derivative works must be licensed under the same terms.
+This repository is licensed under the **GNU GPL v3.0-or-later** (SPDX: GPL-3.0-or-later). See [`LICENSE`](./LICENSE), [`COPYING`](./COPYING) and [`NOTICE`](./NOTICE). The content is a community-contributed collection (original author unknown), reorganized and redistributed; it contains no third-party or game-licensed assets; derivative works must be licensed under the same terms.
