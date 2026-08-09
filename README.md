@@ -12,13 +12,13 @@ Works with Claude Code, Codex, Cursor, Gemini CLI and other agents following the
 
 ```bash
 # 全部安装到全部已检测到的智能体
-npx skills add <owner>/<repo> --all
+npx skills add 2784693842/dst-skill --all
 
 # 只装到 Claude Code
-npx skills add <owner>/<repo> --skill '*' -a claude-code
+npx skills add 2784693842/dst-skill --skill '*' -a claude-code
 
 # 只装指定技能
-npx skills add <owner>/<repo> --skill dst-component-authoring --skill dst-networking-rpc
+npx skills add 2784693842/dst-skill --skill dst-component-authoring --skill dst-networking-rpc
 ```
 
 ## 结构 / Layout
@@ -54,11 +54,11 @@ Skills are installed on-demand by description triggers designed to be mutually e
 ## 使用示例
 
 ```bash
-# 搜技能
-npx skills find dst --owner <owner>
+# 全部安装
+npx skills add 2784693842/dst-skill --all
 
 # 不安装直接用
-npx skills use <owner>/<repo> --skill dst-stategraph-authoring
+npx skills use 2784693842/dst-skill --skill dst-stategraph-authoring
 ```
 
 ## License / 许可
