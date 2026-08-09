@@ -4,7 +4,7 @@ description: 分发到对应的 DST 模组技能（dst-*）
 
 <!--
   不要看上我的菊 Agent Skills — /dst 分发命令
-  Original author unknown
+  Original author: alt
 
   This command file is part of the 不要看上我的菊 Agent Skills package,
   licensed under the GNU General Public License v3.0-or-later (SPDX:
