@@ -7,9 +7,11 @@ description: Use when automating DST Mod Tool via Lua script injection, screensh
 
 通过 Lua 脚本注入 + 截图差异检测 + UIA 精确控件操控，自动化控制 DST Mod Tool（Spine/DST 动画编辑器）。
 
+**当前版本**：1.1.13（2026-08-13 更新，SHA256: `42db01835931a7d7b24def4b5813c8f29cc26ad4c2c48bd5c8a50dc568ccae83`）
+
 ## 核心设计原则：Lua 优先，截图验证兜底
 
-DST Mod Tool 实测支持 `script --stdin` 子命令，从 stdin 读取 Lua 源码后执行，向 stdout 输出结构化 JSON。这是 **唯一可靠的自动化入口**——所有 `--flag` 参数（`--headless`、`--batch`、`--run` 等）均无效。
+DST Mod Tool 实测支持 `script --stdin` 子命令，从 stdin 读取 Lua 源码后执行，向 stdout 输出结构化 JSON。这是 **唯一可靠的自动化入口**。1.1.13 起新增 `--help` / `-h`（顶层）和 `script --help [--lang en|zh-CN]`（脚本 API 参考）子命令。所有其他 `--flag` 参数（`--version`、`--batch`、`--headless`、`--run` 等）均无效，会直接启动 GUI。
 
 | 能力 | 入口 | 精确度 | 成本 |
 |------|------|--------|------|
@@ -82,13 +84,29 @@ gpui/Zed 框架通过 UIA 暴露完整控件树（47 Buttons + 1 Slider + 1 Menu
 
 ## 接口锚点
 
+### 顶层 CLI
+
+```bash
+# 1.1.13 新增：--help / -h 正常工作，打印帮助文本后退出（不启动 GUI）
+"D:\starve\DST Mod Tool.exe" --help
+
+# 1.1.13 新增：script --help [--lang en|zh-CN] 打印完整 Lua API 参考（~50KB）
+"D:\starve\DST Mod Tool.exe" script --help
+"D:\starve\DST Mod Tool.exe" script --help --lang zh-CN
+
+# 打开动画资源或 .dmt 工作区（仍会启动 GUI）
+"D:\starve\DST Mod Tool.exe" <动画文件.zip>
+
+# 无效参数（启动 GUI，不输出）：--version、/?、help
+```
+
 ### Lua 脚本接口（实测验证）
 
 ```bash
 # 方式1：内联脚本
 "D:\starve\DST Mod Tool.exe" script --text "print(1+1)"
 
-# 方式2：从文件读取
+# 方式2：从文件读取（必须为绝对路径）
 "D:\starve\DST Mod Tool.exe" script --file "C:\abs\path\script.lua"
 
 # 方式3：从 stdin 读取（lua_client.py 使用此方式）

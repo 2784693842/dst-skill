@@ -1,6 +1,6 @@
 # Lua API 完整参考
 
-以下 API 从 `DST Mod Tool.exe`（版本 1.1.12）二进制字符串提取，已通过 `script --stdin` 实测验证。
+以下 API 从 `DST Mod Tool.exe`（版本 1.1.13）的 `script --help` 输出提取。1.1.12 的实测验证结论仍适用，1.1.13 新增了完整的文档层次结构和工具对象参考。
 
 ## 全局对象
 
@@ -74,3 +74,41 @@
 - 只读脚本（无工具方法调用）不产生撤销条目
 - `undo`/`redo` 不能与文档修改混用在同一脚本中
 - 资源限制：指令数、内存超限则整次回滚
+- 延迟工具操作失败 → 后续延迟操作不执行，但已提交的文档变更不回滚
+- 调用方必须检查 `ok`、`error`、`tool_results` 三个字段，不能只看文档 revision
+
+## 文档层次结构（1.1.13 新增）
+
+```
+doc
+├── builds                # Build 集合
+│   └── Build
+│       └── symbols       # Symbol 集合
+│           └── Symbol
+│               └── frames    # SymbolFrame 集合
+│                   └── SymbolFrame
+└── banks                 # Bank 集合
+    └── Bank
+        └── animations    # Animation 集合
+            └── Animation
+                └── frames      # AnimFrame 集合
+                    └── AnimFrame
+                        └── elements  # Element 集合
+                            └── Element
+```
+
+## 集合约定
+
+- 所有集合为 **1-based 有序序列**，支持 `ipairs` 和长度运算符
+- 集合为**只读视图**，禁止 `collection[i] = value`，用 `add`/`remove`/`move_to`/`move_to_parent` 替代
+- 文档集合不支持 `pairs`，必须用 `ipairs` 保持文档顺序
+- 修改集合时逆序遍历：`for i = #collection, 1, -1 do collection[i]:remove() end`
+- `find(name)` 大小写不敏感；`SymbolFrame` 用 `find(num)` 精确查找
+
+## 字段与方法约定
+
+- 每个节点暴露**只读 `id` 字段**（十进制字符串），文档内唯一且跨编辑/保存/撤销稳定
+- 可写字段支持直接赋值和显式 setter（`set_frame_rate`/`set_pivot`/`set_bounds`/`set_reference`/`set_transform`）
+- 显式 setter 返回值表示是否真正改变（`true`/`false`）
+- 只读字段、子集合、文档结构不可直接赋值
+- `clone()` 返回新副本，`add()` 返回新创建的节点
