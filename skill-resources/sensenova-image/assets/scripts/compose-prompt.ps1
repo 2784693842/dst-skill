@@ -61,10 +61,10 @@ $STYLE_SUFFIXES = [ordered]@{
     concept    = "concept art, artstation trending, detailed, epic"
 }
 
-$NEGATIVE = "low quality, worst quality, blurry, deformed, distorted, bad anatomy, extra limbs, watermark, text, signature, out of frame"
+$NEG_PREFIX = "low quality, worst quality, blurry, deformed, distorted, bad anatomy, extra limbs, watermark, text, signature, out of frame"
 
 $styleKey = $Style.ToLower().Trim()
-if ($STYLE_SUFFIXES.ContainsKey($styleKey)) {
+if ($STYLE_SUFFIXES.Contains($styleKey)) {
     $suffix = $STYLE_SUFFIXES[$styleKey]
 } else {
     Write-Warning "未知风格键 '$Style'，可用: $($STYLE_SUFFIXES.Keys -join ', ')，回退 default。"
@@ -82,11 +82,8 @@ $prompt = $parts -join ", "
 if (-not $NoQuality -and -not ($suffix.Contains("highly detailed") -or $suffix.Contains("8k") -or $suffix.Contains("artstation"))) {
     $prompt += ", highly detailed, best quality"
 }
-if ($Negative -or $false) {
-    # 默认不追加负向，用户显式 -Negative 才加
-}
 if ($Negative) {
-    $prompt += ", " + $NEGATIVE
+    $prompt += ", " + $NEG_PREFIX
 }
 
 # ---------- 长度告警 ----------

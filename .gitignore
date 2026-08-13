@@ -1,0 +1,15 @@
+# 文生图输出（每次生成图都存这里，不进 git）
+output/
+
+# Claude 工作目录
+.claude/
+
+# 临时文件
+__pycache__/
+*.pyc
+*.tmp
+*.bak
+*.log
+*.swp
+*.swo
+*~

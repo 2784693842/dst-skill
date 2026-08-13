@@ -143,7 +143,10 @@ if (-not (Test-ImageBytes $bytes)) {
 $smallExists = $false
 try {
     Add-Type -AssemblyName "System.Drawing" -ErrorAction Stop | Out-Null
-    $bitmap = [System.Drawing.Bitmap]::FromStream((New-Object System.IO.MemoryStream($bytes)))
+    $stream = New-Object System.IO.MemoryStream
+    [void]$stream.Write($bytes, 0, $bytes.Length)
+    $stream.Position = 0
+    $bitmap = [System.Drawing.Bitmap]::FromStream($stream)
     $w = $bitmap.Width
     $h = $bitmap.Height
     if ($w -gt 1200) {
@@ -163,6 +166,7 @@ try {
         $smallExists = $true
     }
     $bitmap.Dispose()
+    $stream.Close()
 }
 catch {
     Write-Warning "未能生成缩放图（$($_.Exception.Message)），将直接回显原图。"

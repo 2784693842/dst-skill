@@ -27,9 +27,9 @@ description: Use when generating images via SenseNova text-to-image API from a t
    - **单图/多图**：`call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n>`
    - **风格变体**：`genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-Size] [-DryRun]`（自动拼 prompt + 调用 + 落地 + 写 manifest + 拼 contact sheet）
    - **批量**：`batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-N] [-Size] [-DryRun]`（Compose 模式：每行 `主体|场景|风格`，走 compose-prompt 组装）
-6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写 scratchpad 目录（`<项目>/.claude/sensenova-images/`）；URL 下载带 User-Agent + 超时 + 2 次重试；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
-7. **回显**：用 `Read(file_path)` 逐张呈现给用户（Claude 视觉能力），同时打印每张的**原图绝对路径**。
-8. **多图/批量**：依次 `Read`；批量/变体模式自动写 `manifest.json`（含 seq/prompt/status/error/images）。
+6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写入**工作区临时目录**（`<工作区>/output/`，由 `-OutputDir` 指定；不写 `.claude/`）；URL 下载带 User-Agent + 超时 + 2 次重试；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
+7. **回显**：**严禁用 `Read` 读取图片文件**（含 PNG/JPG/WebP）。回显方式：打印每张图的**绝对路径** + 生成参数 + 提示词摘要，让用户自行打开；多图/变体时附 `manifest.json` 路径方便追溯。
+8. **多图/批量**：打印所有图片路径列表；批量/变体模式自动写 `manifest.json`（含 seq/prompt/status/error/images）。
 9. **拼合对比**：多图时用 `make-contact-sheet.ps1 -ImagePaths <path1,path2,...> -Cols <N> -CellW <W> -CellH <H> [-NoLabel] -OutName <name>.png` 拼成网格 PNG，每格标序号+文件名，方便横向对比。
 10. **失败处理**：API 错误（鉴权失败 / 限流 / 内容违规 / 超时）映射为可读错误并给重试 / 调整建议，绝不吞错。
 
@@ -43,8 +43,8 @@ description: Use when generating images via SenseNova text-to-image API from a t
 ## 不变量
 
 - `SENSENOVA_API_KEY` 绝不出现在终端输出、日志或产物文件中。
-- 生成图片只写入 scratchpad（`.claude/sensenova-images/`），不写入项目源码目录。
-- 回显前图片必须先落地为本地文件（`Read` 只接受本地路径），不直接展示 base64 内联。
+- **严禁用 `Read` 工具读取图片文件**（PNG/JPG/WebP/BMP 等）。回显方式仅限打印路径 + 参数摘要，让用户自行打开。
+- 生成图片写入**工作区临时目录**（默认 `<工作区>/output/`），不写 `.claude/`，不写项目源码目录。
 - 大图回显用缩放副本（`*-small.png`），原图保留在磁盘。
 - 落地后必须校验图像魔数，非图像字节直接报错并丢弃，避免把错误 JSON 或乱码当成图片保存。
 - 模型名、端点、size 规格全部以 contract 快照为准，不硬编码易变项。

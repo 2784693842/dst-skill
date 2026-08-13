@@ -15,6 +15,14 @@ contact_sheet_*.png
 # scratchpad 目录（可选，如果不想把整个目录都排除就注释掉）
 # .claude/
 
+# 工作区临时输出目录
+output/
+
+# 密钥/配置（含 API Key，绝不入库）
+.env
+*.env
+.env.*
+
 # 临时文件
 __pycache__/
 *.pyc
