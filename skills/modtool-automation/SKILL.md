@@ -13,9 +13,19 @@ description: Use when automating DST Mod Tool via Lua script injection, screensh
 
 DST Mod Tool 实测支持 `script --stdin` 子命令，从 stdin 读取 Lua 源码后执行，向 stdout 输出结构化 JSON。这是 **唯一可靠的自动化入口**。1.1.13 起新增 `--help` / `-h`（顶层）和 `script --help [--lang en|zh-CN]`（脚本 API 参考）子命令。所有其他 `--flag` 参数（`--version`、`--batch`、`--headless`、`--run` 等）均无效，会直接启动 GUI。
 
+**1.1.13 关键变化**：
+- 新增 `--help`/`-h`（顶层帮助）、`script --help [--lang en|zh-CN]`（50KB Lua API 参考）
+- 新增 `tool:save_document` / `tool:save_document_as` / `tool:open_document` — **可直接通过 Lua 命令打开/保存 .dmt 文件**，无需再依赖 GUI 文件对话框
+- 新增完整的 Build/Bank 树 API（Build/Symbol/SymbolFrame/Bank/Animation/AnimFrame/Element 全生命周期）
+- 新增裁剪 `animation:crop`、对比 `utils.compare_anim_frames`、仿射工具 `utils.affine`
+- 新增 Anti-Follow / Follow Symbol / 搜索替换 Elements / 碰撞重算
+- 新增 DMT 工作区命令：`save_document_as` 原子保存，`open_document` 为终端命令
+- 安全限额明确：Lua 内存 64 MiB、指令 1000 万、执行时间 5 秒
+
 | 能力 | 入口 | 精确度 | 成本 |
 |------|------|--------|------|
-| 文档操作（导入/选择/播放/撤销/导出） | `script --stdin` (Lua API) | ✅ 事务级 | ~340μs/次 |
+| 文档操作（导入/选择/播放/撤销/导出/开存 .dmt） | `script --stdin` (Lua API) | ✅ 事务级 | ~340μs/次 |
+| 动画编辑（裁剪/对比/仿射/跟随符号） | `script --text/--file` | ✅ 事务级 | ~340μs/次 |
 | 精确点击 UI 控件 | UIA `click_input()` | ✅ 1px | ~50ms |
 | 截图验证操作结果 | ImageGrab + 像素 diff | ✅ 亚像素 | ~50ms |
 | 语义描述变化 | caption-vision.ps1 | ✅ 语义级 | ~2s |
@@ -37,18 +47,23 @@ DST Mod Tool 实测支持 `script --stdin` 子命令，从 stdin 读取 Lua 源�
 
 ```
 ① 启动/连接工具
-   命令: DST Mod Tool.exe --open <动画文件.zip>
+   命令: DST Mod Tool.exe <动画文件.zip>
+   或:   通过 Lua 命令 tool:open_document("/abs/path.dmt") 打开已有 .dmt
    或:   python uia_client.py info  (连接已运行的实例)
 
 ② 执行 Lua 脚本
    命令: python lua_client.py run "doc:set_label('test'); print(document_revision)"
    返回: {"ok": true, "output": ["4"], "document": {"changed": false}}
 
-③ 验证操作结果（可选）
-   python diff_detector.py full before.png after.png
-   返回: {"changed": true, "bbox": [100, 50, 400, 300], "description": "角色换为奔跑动作"}
+③ 操作 .dmt 工作区（1.1.13 新增）
+   保存:  tool:save_document()          -- 保存到已绑定的 .dmt
+   另存:  tool:save_document_as("/abs")  -- 原子保存并绑定新路径
+   打开:  tool:open_document("/abs")    -- 终端命令，替换工作区（不能与编辑混用）
 
-④ 报告
+④ 验证操作结果（可选）
+   python diff_detector.py full before.png after.png
+
+⑤ 报告
    整合 Lua output + diff 描述 → 自然语言报告
 ```
 

@@ -13,3 +13,6 @@ __pycache__/
 *.swp
 *.swo
 *~
+
+# 环境变量（含 API Key）
+.env
