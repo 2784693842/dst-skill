@@ -3,68 +3,20 @@
 
 用法：python ktex_batch.py <tex根目录>
 
-依赖：ktex_decode.py（同目录）。
+依赖：ktex_lib.py（同目录）。
 """
-import struct
 import sys
 import os
 import glob
-import json
-from collections import defaultdict, Counter
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ktex_decode import parse_ktex, decode_mip, stats
+from ktex_lib import parse_ktex, decode_mip, stats, fmt_name, cat_of
 
-# 分类关键词（与 dst_tex_analyze.py 同源）
-CATS = {
-    "turf": [
-        "turf", "ground", "tile", "road", "terrain", "floor", "soil", "dirt",
-    ],
-    "building": [
-        "building", "house", "home", "station", "machine", "temple",
-        "palace", "furniture", "altar", "structure",
-    ],
-    "creature": [
-        "monster", "creature", "boss", "animal", "bird", "deer", "pig",
-        "spider", "dragon", "god", "beast", "head",
-    ],
-    "plant": [
-        "plant", "tree", "crop", "flower", "grass", "mushroom",
-    ],
-    "ui": [
-        "icon", "button", "ui", "hud", "menu", "badge", "slot",
-    ],
-}
+BKT_ORDER = [">=2048", ">=1024", ">=512", ">=256", ">=128", ">=64", "<64"]
 
 
-def cat_of(path):
-    pl = path.lower()
-    for c, keywords in CATS.items():
-        for kw in keywords:
-            if kw in pl:
-                return c
-    return "other"
-
-
-def fmt_name(mip, size):
-    """按 per-block 字节数判定格式。"""
-    w, h = mip[0], mip[1]
-    bw = (w + 3) // 4
-    bh = (h + 3) // 4
-    blocks = bw * bh
-    if blocks == 0:
-        return "unknown"
-    bpp = size // blocks
-    if bpp == 4:
-        return "RGBA8"
-    if bpp == 8:
-        return "DXT1"
-    if bpp == 16:
-        return "DXT5"
-    return "unknown"
-
-
-def size_bucket(w, h):
+def size_bucket(w: int, h: int) -> str:
     m = max(w, h)
     if m >= 2048:
         return ">=2048"
@@ -81,10 +33,7 @@ def size_bucket(w, h):
     return "<64"
 
 
-BKT_ORDER = [">=2048", ">=1024", ">=512", ">=256", ">=128", ">=64", "<64"]
-
-
-def analyze(root):
+def analyze(root: str) -> None:
     all_tex = glob.glob(os.path.join(root, "**", "*.tex"), recursive=True)
     if not all_tex:
         print(f"WARNING: no *.tex found under {root}", file=sys.stderr)
@@ -96,20 +45,18 @@ def analyze(root):
     cat_stats = Counter()
     non_pow2 = []
     total = 0
-    samples = []  # (path, fmt, mips, data_start)
+    samples = []
 
     for p in all_tex:
-        try:
-            data = open(p, "rb").read()
-        except OSError:
-            continue
+        with open(p, "rb") as f:
+            data = f.read()
         parsed = parse_ktex(data)
         if parsed is None:
             continue
         fmt, mips, data_start = parsed
         total += 1
         w, h = mips[0][0], mips[0][1]
-        fn = fmt_name(mips[0], mips[0][2])
+        fn = fmt_name(mips[0], fmt)
         fmt_stats[fn] += 1
         size_stats[size_bucket(w, h)] += 1
         mip_stats[len(mips)] += 1
@@ -130,7 +77,6 @@ def analyze(root):
     for p, w, h in non_pow2[:6]:
         print(f"  {os.path.basename(p)}: {w}x{h}")
 
-    # 每类抽样解码 1-2 张做像素统计（上限 40 张）
     print("\n" + "=" * 60)
     print("代表性样本像素统计（每类最多 2 张）")
     print("=" * 60)
@@ -143,7 +89,8 @@ def analyze(root):
         if cat == "other" and picked[cat] >= 1:
             continue
         try:
-            data = open(p, "rb").read()
+            with open(p, "rb") as f:
+                data = f.read()
             rgba = decode_mip(data, fmt, mips, 0)
             if rgba is None:
                 continue
@@ -153,7 +100,7 @@ def analyze(root):
             n += 1
             print(
                 f"[{cat}] {os.path.basename(p)}"
-                f" {s['size']} {fmt_name(mips[0], mips[0][2])}"
+                f" {s['size']} {fmt_name(mips[0], fmt)}"
                 f" avg_rgb={s['avg_rgb']} alpha={s['avg_alpha']}"
                 f" opaque={s['opaque%']}% trans={s['transparent%']}%"
                 f" sat={s['avg_saturation']} bright={s['avg_brightness']}"
