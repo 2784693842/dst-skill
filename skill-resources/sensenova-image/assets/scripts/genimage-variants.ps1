@@ -1,46 +1,53 @@
 ﻿<#
 .SYNOPSIS
-    同一主体 + 多风格自动出图，并拼成 contact sheet。
+    Generate multiple style variants of the same subject, then produce a contact sheet.
 
 .DESCRIPTION
-    编排 compose-prompt → call-genimage → image-save → make-contact-sheet 四件套。
-    输出：每张变体 PNG + manifest.json + contact_sheet_*.png。
+    Orchestrates compose-prompt -> call-genimage -> image-save -> make-contact-sheet.
+    Outputs: each variant PNG + manifest.json + contact_sheet_*.png.
 
 .PARAMETER Subject
-    画面主体（必填），如 "a dragon"。
+    Main subject (required), e.g. "a dragon".
 
 .PARAMETER Scene
-    场景描述，如 "soaring over a castle"。
+    Scene description, e.g. "soaring over a castle".
 
 .PARAMETER Styles
-    风格键名列表，可选：default / photoreal / anime / oil / watercolor / pixel / d3 / cyberpunk / minimal / vintage / concept。默认 @(default, photoreal, anime, oil, d3, cyberpunk, vintage, concept)。
+    Style key list, options: default / photoreal / anime / oil / watercolor / pixel / d3 / cyberpunk / minimal / vintage / concept.
+    Default: @(default, photoreal, anime, oil, d3, cyberpunk, vintage, concept).
 
 .PARAMETER Mood
-    氛围词，如 "volumetric lighting"，追加到每个 prompt。
+    Mood words, e.g. "volumetric lighting", appended to each prompt.
 
 .PARAMETER Size
-    图片尺寸（默认 2048x2048）。
+    Image size (default 2048x2048). If -AspectRatio is provided, this is ignored.
+
+.PARAMETER AspectRatio
+    Aspect ratio (optional). Resolved via resolve-size.ps1 with -Tier.
+
+.PARAMETER Tier
+    Resolution tier for -AspectRatio: 1k or 2k. Default 2k.
 
 .PARAMETER Negative
-    追加负向约束到每个 prompt。
+    Append negative constraints to each prompt.
 
 .PARAMETER OutputDir
-    输出目录；默认 `<工作目录>/.claude/sensenova-images/variants_<ts>`。
+    Output directory; default <cwd>/.claude/sensenova-images/variants_<ts>.
 
 .PARAMETER DryRun
-    只打印将执行的计划，不调用 API。
+    Print the plan only, do not call API.
 
 .PARAMETER NoSheet
-    不生成 contact sheet。
+    Skip contact sheet generation.
 
 .EXAMPLE
-    .\genimage-variants.ps1 -Subject "a cat" -Scene "sitting on a windowsill" -Styles anime, oil, photoreal
+    .\genimage-variants.ps1 -Subject "a cat" -Scene "sitting on a windowsill" -AspectRatio 9:16 -Styles anime, oil, photoreal
 
 .EXAMPLE
-    .\genimage-variants.ps1 -Subject "a cyberpunk city" -Mood "neon rain" -DryRun
+    .\genimage-variants.ps1 -Subject "a cyberpunk city" -Mood "neon rain" -AspectRatio 21:9 -DryRun
 
 .NOTES
-    单风格一张图，多个风格 = N 张。最终拼成 contact sheet 方便对比。
+    One style = one image. Multiple styles = N images. Final contact sheet for comparison.
 #>
 [CmdletBinding()]
 param(
@@ -55,6 +62,10 @@ param(
 
     [string]$Size = "2048x2048",
 
+    [string]$AspectRatio = "",
+
+    [string]$Tier = "2k",
+
     [switch]$Negative,
 
     [string]$OutputDir = "",
@@ -64,7 +75,7 @@ param(
     [switch]$NoSheet
 )
 
-# ---------- 定位脚本 ----------
+# ---------- Locate scripts ----------
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $composeScript = Join-Path $scriptDir "compose-prompt.ps1"
 $callScript    = Join-Path $scriptDir "call-genimage.ps1"
@@ -73,51 +84,75 @@ $sheetScript   = Join-Path $scriptDir "make-contact-sheet.ps1"
 
 foreach ($s in @($composeScript, $callScript, $saveScript, $sheetScript)) {
     if (-not (Test-Path $s)) {
-        Write-Error "依赖脚本缺失: $s"
+        Write-Error "Dependency script missing: $s"
         exit 1
     }
 }
 
-# ---------- 输出目录 ----------
+# ---------- Resolve effective size ----------
+$effectiveSize = $Size
+if ($AspectRatio -and $AspectRatio.Trim() -ne "") {
+    $resolveScript = Join-Path $scriptDir "resolve-size.ps1"
+    if (-not (Test-Path $resolveScript)) {
+        Write-Error "resolve-size.ps1 not found at: $resolveScript"
+        exit 1
+    }
+    try {
+        $effectiveSize = & $resolveScript -AspectRatio $AspectRatio -Tier $Tier
+        if ($LASTEXITCODE -ne 0 -or -not $effectiveSize) {
+            Write-Error "Failed to resolve aspect ratio '$AspectRatio' tier '$Tier'."
+            exit 1
+        }
+    }
+    catch {
+        Write-Error "resolve-size.ps1 error: $($_.Exception.Message)"
+        exit 1
+    }
+}
+
+# ---------- Output directory ----------
 if (-not $OutputDir -or $OutputDir.Trim() -eq "") {
     $OutputDir = Join-Path (Get-Location) ".claude\sensenova-images\variants_$(Get-Date -Format yyyyMMddHHmmss)"
 }
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
 
-# ---------- 组装 prompt 列表 ----------
+# ---------- Build prompt list ----------
 $prompts = [System.Collections.Generic.List[object]]::new()
 foreach ($style in $Styles) {
     $negSwitch = if ($Negative) { @("-Negative") } else { @() }
-    $prompt = & $composeScript -Subject $Subject -Scene $Scene -Style $style -Mood $Mood @negSwitch
+    $aspectArr = if ($AspectRatio -and $AspectRatio.Trim() -ne "") { @("-AspectRatio", $AspectRatio) } else { @() }
+    $prompt = & $composeScript -Subject $Subject -Scene $Scene -Style $style -Mood $Mood @negSwitch @aspectArr
     $prompts.Add([ordered]@{ style = $style; prompt = $prompt })
 }
 
-# ---------- 执行 ----------
+# ---------- Dry run ----------
 if ($DryRun) {
-    Write-Host "=== 风格变体计划（DRY-RUN）==="
-    Write-Host "主体: $Subject"
-    Write-Host "场景: $Scene"
-    Write-Host "风格: $($Styles -join ', ')"
-    Write-Host "尺寸: $Size"
+    Write-Host "=== Style variant plan (DRY-RUN) ==="
+    Write-Host "Subject: $Subject"
+    Write-Host "Scene: $Scene"
+    Write-Host "Styles: $($Styles -join ', ')"
+    Write-Host "Size: $effectiveSize (AspectRatio: $AspectRatio, Tier: $Tier)"
     Write-Host ""
     foreach ($p in $prompts) {
         Write-Host "[$($p.style)] $($p.prompt)"
     }
     Write-Host ""
-    Write-Host "将生成 $($prompts.Count) 张图 + contact sheet（如未禁用）"
+    Write-Host "Will generate $($prompts.Count) image(s) + contact sheet (if not disabled)"
     exit 0
 }
 
+# ---------- Execute ----------
 $items = [System.Collections.Generic.List[object]]::new()
 $seq = 0
 foreach ($p in $prompts) {
     $seq++
     Write-Host ""
-    Write-Host "[#] 风格 $($p.style) / $($prompts.Count)"
+    Write-Host "[#] Style $($p.style) / $($prompts.Count)"
 
-    $apiOut = & $callScript -Prompt $p.prompt -Size $Size -N 1 2>&1 | Out-String
+    $apiArgs = @("-Prompt", $p.prompt, "-Size", $effectiveSize, "-N", 1)
+    $apiOut = & $callScript @apiArgs 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "[$($p.style)] API 调用失败: $apiOut"
+        Write-Warning "[$($p.style)] API call failed: $apiOut"
         $items.Add([ordered]@{ seq = $seq; style = $p.style; prompt = $p.prompt; status = "failed"; error = $apiOut; images = @() })
         continue
     }
@@ -125,7 +160,7 @@ foreach ($p in $prompts) {
     $resp = $null
     try { $resp = $apiOut | ConvertFrom-Json -ErrorAction Stop }
     catch {
-        $items.Add([ordered]@{ seq = $seq; style = $p.style; prompt = $p.prompt; status = "failed"; error = "JSON 解析失败"; images = @() })
+        $items.Add([ordered]@{ seq = $seq; style = $p.style; prompt = $p.prompt; status = "failed"; error = "JSON parse failed"; images = @() })
         continue
     }
 
@@ -141,45 +176,47 @@ foreach ($p in $prompts) {
             $saved = $saveOut | ConvertFrom-Json
             $imagePaths.Add($saved.original)
         } else {
-            Write-Warning "[$($p.style)] 落地失败: $saveOut"
+            Write-Warning "[$($p.style)] Save failed: $saveOut"
         }
     }
 
     $status = if ($imagePaths.Count -gt 0) { "ok" } else { "failed" }
     $items.Add([ordered]@{ seq = $seq; style = $p.style; prompt = $p.prompt; status = $status; error = $null; images = @($imagePaths) })
-    Write-Host "  --> $($imagePaths.Count) 张已保存"
+    Write-Host "  --> $($imagePaths.Count) image(s) saved"
 }
 
 # ---------- manifest.json ----------
 $manifest = [ordered]@{
-    createdAt = (Get-Date).ToUniversalTime().ToString("o")
-    model     = "sensenova-u1-fast"
-    size      = $Size
-    subject   = $Subject
-    scene     = $Scene
-    styles    = @($Styles)
-    items     = @($items)
+    createdAt    = (Get-Date).ToUniversalTime().ToString("o")
+    model        = "sensenova-u1-fast"
+    size         = $effectiveSize
+    aspectRatio  = $AspectRatio
+    tier         = $Tier
+    subject      = $Subject
+    scene        = $Scene
+    styles       = @($Styles)
+    items        = @($items)
 }
 $manifestPath = Join-Path $OutputDir "manifest.json"
 $manifest | ConvertTo-Json -Depth 10 | Out-File -FilePath $manifestPath -Encoding utf8
 Write-Host ""
 Write-Host "Manifest: $manifestPath"
 
-# ---------- contact sheet ----------
+# ---------- Contact sheet ----------
 $allImages = @($items | Where-Object { $_.status -eq "ok" } | ForEach-Object { $_.images } | ForEach-Object { $_ })
 if ($allImages.Count -ge 2 -and -not $NoSheet) {
     $sheetOut = & $sheetScript -ImagePaths $allImages -Cols 0 -CellW 400 -CellH 400 -OutputDir $OutputDir -OutName "variants_contact_sheet.png" 2>&1 | Out-String
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Contact sheet: $($allImages.Count) 张拼合完成"
+        Write-Host "Contact sheet: $($allImages.Count) image(s) assembled"
     }
     else {
-        Write-Warning "Contact sheet 生成失败: $sheetOut"
+        Write-Warning "Contact sheet generation failed: $sheetOut"
     }
 }
 
-# ---------- 摘要 ----------
+# ---------- Summary ----------
 $okCount = @($items | Where-Object { $_.status -eq "ok" }).Count
 $failCount = @($items | Where-Object { $_.status -eq "failed" }).Count
 Write-Host ""
-Write-Host "=== 风格变体完成 ==="
-Write-Host "风格数: $($Styles.Count)  |  成功: $okCount  |  失败: $failCount"
+Write-Host "=== Style variants complete ==="
+Write-Host "Styles: $($Styles.Count)  |  OK: $okCount  |  Failed: $failCount"

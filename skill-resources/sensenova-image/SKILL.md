@@ -11,8 +11,9 @@ description: Use when generating images via SenseNova text-to-image API from a t
 
 - 单图生成
 - 多图变体（`n>1`）
-- 11 种 2K 分辨率 / 比例选择
+- 11 种比例 × 2 种档次（1K / 2K）= **22 种精确像素规格**
 - 风格化（套用风格后缀模板）
+- 骨架保留 / 风格迁移（同一主体快速换风格）
 - 批量生成（多个 prompt）
 - 系列一致生成（复用角色 / 风格锚定段）
 - 迭代精修（按用户反馈改 prompt 重新生成）
@@ -21,13 +22,24 @@ description: Use when generating images via SenseNova text-to-image API from a t
 
 1. **校验配置**：读取 `SENSENOVA_API_KEY`（来自环境变量或项目 `.env`），缺失或空值立即报错并给出获取指引，不继续。
 2. **解析意图**：从用户自然语言提取——主提示词、目标比例、数量、风格倾向、是否系列生成。
-3. **组装提示词**：套 `compose-prompt.ps1 -Subject <主体> -Scene <场景> -Style <风格键> -Mood <氛围> [-Negative]` 自动拼接风格后缀 / 质量后缀 / 负向约束（内置 11 个风格键：default/photoreal/anime/oil/watercolor/pixel/d3/cyberpunk/minimal/vintage/concept）；或用 `assets/prompt-templates.md` 的手写模板；系列生成时复用已确认的锚定段。
-4. **选 size**：按目标比例从 `references/sensenova-contract.md` 的规格表匹配；用户未指定比例时给出建议而非擅自猜测，默认 `2048x2048`（1:1）。
+3. **组装提示词**：
+   - **自动组装**：`compose-prompt.ps1 -Subject <主体> -Scene <场景> -Style <风格键> -Mood <氛围> [-AspectRatio 16:9] [-Negative]`
+     - 内置 11 个风格键：default/photoreal/anime/oil/watercolor/pixel/d3/cyberpunk/minimal/vintage/concept
+     - `-AspectRatio` 自动在 prompt 开头插入构图前缀（如 `Composition: 16:9 landscape, ...`）
+   - **骨架保留 / 风格迁移**：先写骨架 prompt（不含风格）验证构图，再用 `genimage-variants.ps1 -Styles a,b,c` 批量换风格
+   - 手写模板：`assets/prompt-templates.md`
+   - 系列生成：复用已确认的锚定段
+4. **选 size**：
+   - **推荐方式**：用 `resolve-size.ps1 -AspectRatio <比例> [-Tier 1k|2k]` 自动解析（如 `-AspectRatio 16:9 -Tier 2k` → `2752x1536`）
+   - 用户未指定比例时给出建议而非擅自猜测；未指定档次默认 2K
+   - 精确像素值见 `references/sensenova-contract.md` 的 BUCKETS 规格表（22 种）
 5. **调用 API**（按场景选入口）：
    - **单图/多图**：`call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n>`
-   - **风格变体**：`genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-Size] [-DryRun]`（自动拼 prompt + 调用 + 落地 + 写 manifest + 拼 contact sheet）
-   - **批量**：`batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-N] [-Size] [-DryRun]`（Compose 模式：每行 `主体|场景|风格`，走 compose-prompt 组装）
-6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写入**工作区临时目录**（`<工作区>/output/`，由 `-OutputDir` 指定；不写 `.claude/`）；URL 下载带 User-Agent + 超时 + 2 次重试；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
+     - 或 `call-genimage.ps1 -Prompt <prompt> -AspectRatio 16:9 -Tier 2k -N 1`（自动解析 size）
+     - API Key 自动从环境变量链获取：`SN_KEY` → `SENSENOVA_KEY` → `SENSENOVA_API_KEY` → `SENSENOVA_SECRET_KEY` → `.env` 文件
+   - **风格变体**：`genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-AspectRatio] [-Tier] [-DryRun]`
+   - **批量**：`batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-AspectRatio] [-Tier] [-DryRun]`
+6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写入**工作区临时目录**（`<工作区>/output/`，由 `-OutputDir` 指定；不写 `.claude/`）；URL 下载带 User-Agent + 超时 + 2 次重试 + Content-Length 头校验（±1% 容差）；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
 7. **回显**：**严禁用 `Read` 读取图片文件**（含 PNG/JPG/WebP）。回显方式：打印每张图的**绝对路径** + 生成参数 + 提示词摘要，让用户自行打开；多图/变体时附 `manifest.json` 路径方便追溯。
 8. **多图/批量**：打印所有图片路径列表；批量/变体模式自动写 `manifest.json`（含 seq/prompt/status/error/images）。
 9. **拼合对比**：多图时用 `make-contact-sheet.ps1 -ImagePaths <path1,path2,...> -Cols <N> -CellW <W> -CellH <H> [-NoLabel] -OutName <name>.png` 拼成网格 PNG，每格标序号+文件名，方便横向对比。
@@ -72,10 +84,14 @@ description: Use when generating images via SenseNova text-to-image API from a t
 ## 按需资源
 
 - size 规格表 / 参数细则：`references/sensenova-contract.md`
-- 提示词模板（风格 / 质量 / 系列锚定）：`assets/prompt-templates.md`
+- 提示词模板（风格 / 质量 / 系列锚定 / 骨架保留 / 构图比例）：`assets/prompt-templates.md`
 - 配置模板：`assets/templates/.env.example`
-- 探活脚本（验证 KEY + 连通性）：`assets/scripts/api-probe.ps1`
-- Prompt 组装器（11 种风格后缀 + 负向 + 质量）：`assets/scripts/compose-prompt.ps1`
-- 批量生成编排（读 prompt 文件 → 调 API → 落地 → manifest）：`assets/scripts/batch-genimage.ps1`
-- 风格变体编排（主体 + 多风格 → 拼 prompt → 出图 → contact sheet）：`assets/scripts/genimage-variants.ps1`
+- 环境诊断脚本（doctor）：`assets/scripts/api-probe.ps1`
+- 尺寸解析器（比例+档次 → 精确像素）：`assets/scripts/resolve-size.ps1`
+- JSON 恢复器（markdown 代码块 → 有效 JSON）：`assets/scripts/recover-json.ps1`
+- Prompt 组装器（11 种风格后缀 + 负向 + 质量 + 构图前缀）：`assets/scripts/compose-prompt.ps1`
+- 单图调用（含 env fallback 链 + Content-Length 校验）：`assets/scripts/call-genimage.ps1`
+- 图片落地（URL/base64 → PNG，含 UA/超时/重试/魔数校验）：`assets/scripts/image-save.ps1`
+- 批量生成编排：`assets/scripts/batch-genimage.ps1`
+- 风格变体编排：`assets/scripts/genimage-variants.ps1`
 - 多图拼合（GDI+ 网格 PNG + 标签）：`assets/scripts/make-contact-sheet.ps1`

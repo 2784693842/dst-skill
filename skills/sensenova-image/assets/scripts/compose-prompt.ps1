@@ -1,34 +1,38 @@
 ﻿<#
 .SYNOPSIS
-    把结构化参数（主体 / 场景 / 风格 / 氛围 / 负向）组装成 SenseNova 文生图 prompt。
+    Assemble structured params (subject / scene / style / mood / negative) into a SenseNova prompt.
 
 .DESCRIPTION
-    内置了与 assets/prompt-templates.md 对齐的风格后缀和负向约束表，
-    按 `[主描述]，[风格后缀]，[质量后缀]，[负向约束]` 顺序拼接。
+    Built-in style suffixes and negative constraints aligned with assets/prompt-templates.md.
+    Assembles in order: [subject], [style suffix], [quality suffix], [negative constraints].
 
 .PARAMETER Subject
-    画面主体（必填），如 "a young woman with silver short hair"。
+    Main subject (required), e.g. "a young woman with silver short hair".
 
 .PARAMETER Scene
-    场景描述，如 "standing on a rainy neon-lit city street at night"。
+    Scene description, e.g. "standing on a rainy neon-lit city street at night".
 
 .PARAMETER Style
-    风格后缀键名，内置：default / photoreal / anime / oil / watercolor / pixel / d3 / cyberpunk / minimal / vintage / concept。默认 default。
+    Style suffix key, built-in: default / photoreal / anime / oil / watercolor / pixel / d3 / cyberpunk / minimal / vintage / concept. Default default.
 
 .PARAMETER Mood
-    氛围词，如 "cinematic lighting, misty"，追加在风格之后。
+    Mood words, e.g. "cinematic lighting, misty", appended after style.
 
 .PARAMETER Negative
-    追加负向约束（默认内置负向表）。
+    Append negative constraints (default built-in negative table).
 
 .PARAMETER NoQuality
-    不追加默认质量后缀（用于风格后缀已包含质量词的场景）。
+    Skip default quality suffix (for styles that already include quality words).
+
+.PARAMETER AspectRatio
+    Aspect ratio (optional, e.g. 16:9). Prepended to the prompt as a composition hint
+    if provided (e.g. "Composition: 16:9 landscape, ..."). Pass-through for batch/variants scripts.
 
 .OUTPUTS
-    [string]  组装好的 prompt 原文。
+    [string]  The assembled prompt text.
 
 .EXAMPLE
-    .\compose-prompt.ps1 -Subject "a dragon" -Scene "soaring over a castle" -Style 3d -Mood "volumetric lighting"
+    .\compose-prompt.ps1 -Subject "a dragon" -Scene "soaring over a castle" -Style 3d -Mood "volumetric lighting" -AspectRatio 16:9
 #>
 [CmdletBinding()]
 param(
@@ -43,10 +47,12 @@ param(
 
     [switch]$Negative,
 
-    [switch]$NoQuality
+    [switch]$NoQuality,
+
+    [string]$AspectRatio = ""
 )
 
-# ---------- 内置风格后缀（与 prompt-templates.md 对齐） ----------
+# ---------- Built-in style suffixes (aligned with prompt-templates.md) ----------
 $STYLE_SUFFIXES = [ordered]@{
     default    = "highly detailed, sharp focus, professional"
     photoreal  = "photorealistic, 8k uhd, dslr, soft lighting, film grain, Fujifilm XT3"
@@ -67,12 +73,23 @@ $styleKey = $Style.ToLower().Trim()
 if ($STYLE_SUFFIXES.Contains($styleKey)) {
     $suffix = $STYLE_SUFFIXES[$styleKey]
 } else {
-    Write-Warning "未知风格键 '$Style'，可用: $($STYLE_SUFFIXES.Keys -join ', ')，回退 default。"
+    Write-Warning "Unknown style key '$Style'. Available: $($STYLE_SUFFIXES.Keys -join ', '). Falling back to default."
     $suffix = $STYLE_SUFFIXES["default"]
 }
 
-# ---------- 组装 ----------
+# ---------- Assemble ----------
 $parts = [System.Collections.Generic.List[string]]::new()
+
+# Composition hint from aspect ratio
+if ($AspectRatio -and $AspectRatio.Trim() -ne "") {
+    $orient = ""
+    $rat = $AspectRatio.ToLower().Trim()
+    if ($rat -match '9:16|9:21|2:3|3:4|4:5') { $orient = "portrait" }
+    elseif ($rat -match '16:9|21:9|3:2|4:3|5:4') { $orient = "landscape" }
+    else { $orient = "square" }
+    $parts.Add("Composition: $rat $orient")
+}
+
 if ($Subject.Trim() -ne "") { $parts.Add($Subject.Trim()) }
 if ($Scene.Trim() -ne "")   { $parts.Add($Scene.Trim()) }
 if ($suffix.Trim() -ne "")  { $parts.Add($suffix.Trim()) }
@@ -86,9 +103,9 @@ if ($Negative) {
     $prompt += ", " + $NEG_PREFIX
 }
 
-# ---------- 长度告警 ----------
+# ---------- Length warning ----------
 if ($prompt.Length -gt 8000) {
-    Write-Warning "Prompt 长度 $($prompt.Length) 字符，接近 4096 token 上限。"
+    Write-Warning "Prompt length $($prompt.Length) chars, near 4096 token limit."
 }
 
 Write-Output $prompt

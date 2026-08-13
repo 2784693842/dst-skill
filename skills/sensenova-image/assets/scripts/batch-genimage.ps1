@@ -1,41 +1,47 @@
 ﻿<#
 .SYNOPSIS
-    从 prompt 列表文件批量调用文生图 API，落地为本地图片并写 manifest。
+    Batch call the image-generation API from a prompt list, save to local images, write manifest.
 
 .DESCRIPTION
-    读取 prompt 文件（每行一个 prompt，或 JSON 数组），逐个调用 call-genimage.ps1 → image-save.ps1。
-    所有结果写入 `<OutputDir>/manifest.json`，格式：
-      { createdAt, model, size, items: [{seq, prompt, status, error, images:[...]}] }
+    Reads a prompt file (one prompt per line, or JSON array), calls call-genimage.ps1 -> image-save.ps1.
+    All results written to <OutputDir>/manifest.json.
 
 .PARAMETER PromptFile
-    prompt 列表文件。格式二选一：
-      - 纯文本：每行一个 prompt（空行跳过）
-      - JSON：字符串数组或对象数组（用 .prompt 字段）
+    Prompt list file. Two formats:
+      - Plain text: one prompt per line (blank lines skipped)
+      - JSON: string array or object array (uses .prompt field)
 
 .PARAMETER Size
-    图片尺寸（默认 2048x2048）。
+    Image size (default 2048x2048). If -AspectRatio is provided, this is ignored.
+
+.PARAMETER AspectRatio
+    Aspect ratio (optional). Resolved via resolve-size.ps1 with -Tier.
+    Overrides -Size when provided.
+
+.PARAMETER Tier
+    Resolution tier for -AspectRatio: 1k or 2k. Default 2k.
 
 .PARAMETER N
-    每个 prompt 生成几张（默认 1）。
+    Images per prompt (default 1).
 
 .PARAMETER OutputDir
-    输出目录；默认 `<工作目录>/.claude/sensenova-images/batch_<ts>`。
+    Output directory; default <cwd>/.claude/sensenova-images/batch_<ts>.
 
 .PARAMETER DryRun
-    只打印将执行的计划，不调用 API。
+    Print the plan only, do not call API.
 
 .PARAMETER Compose
-    把每行/每个元素当作"主体 | 场景 | 风格"管道符分隔，走 compose-prompt.ps1 组装。
-    格式：`主体 | 场景 | 风格键名`（如 "a dragon | over a castle | d3"）。
+    Treat each line as "subject | scene | style" pipe-delimited, run through compose-prompt.ps1.
+    Format: `subject | scene | style_key` (e.g. "a dragon | over a castle | d3").
 
 .EXAMPLE
-    .\batch-genimage.ps1 -PromptFile prompts.txt -Size 2752x1536 -N 2
+    .\batch-genimage.ps1 -PromptFile prompts.txt -AspectRatio 16:9 -N 2
 
 .EXAMPLE
-    .\batch-genimage.ps1 -PromptFile prompts.txt -Compose -DryRun
+    .\batch-genimage.ps1 -PromptFile prompts.txt -Compose -AspectRatio 9:16 -DryRun
 
 .NOTES
-    失败项不会阻断后续项，结果体现在 manifest 的 status/error 字段。
+    Failed items don't block subsequent items; results reflected in manifest status/error fields.
 #>
 [CmdletBinding()]
 param(
@@ -43,6 +49,10 @@ param(
     [string]$PromptFile,
 
     [string]$Size = "2048x2048",
+
+    [string]$AspectRatio = "",
+
+    [string]$Tier = "2k",
 
     [int]$N = 1,
 
@@ -53,7 +63,7 @@ param(
     [switch]$Compose
 )
 
-# ---------- 定位脚本 ----------
+# ---------- Locate scripts ----------
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $callScript = Join-Path $scriptDir "call-genimage.ps1"
 $saveScript = Join-Path $scriptDir "image-save.ps1"
@@ -61,14 +71,35 @@ $composeScript = Join-Path $scriptDir "compose-prompt.ps1"
 
 foreach ($s in @($callScript, $saveScript, $composeScript)) {
     if (-not (Test-Path $s)) {
-        Write-Error "依赖脚本缺失: $s"
+        Write-Error "Dependency script missing: $s"
         exit 1
     }
 }
 
-# ---------- 解析 prompt 列表 ----------
+# ---------- Resolve effective size ----------
+$effectiveSize = $Size
+if ($AspectRatio -and $AspectRatio.Trim() -ne "") {
+    $resolveScript = Join-Path $scriptDir "resolve-size.ps1"
+    if (-not (Test-Path $resolveScript)) {
+        Write-Error "resolve-size.ps1 not found at: $resolveScript"
+        exit 1
+    }
+    try {
+        $effectiveSize = & $resolveScript -AspectRatio $AspectRatio -Tier $Tier
+        if ($LASTEXITCODE -ne 0 -or -not $effectiveSize) {
+            Write-Error "Failed to resolve aspect ratio '$AspectRatio' tier '$Tier'."
+            exit 1
+        }
+    }
+    catch {
+        Write-Error "resolve-size.ps1 error: $($_.Exception.Message)"
+        exit 1
+    }
+}
+
+# ---------- Parse prompt list ----------
 if (-not (Test-Path $PromptFile)) {
-    Write-Error "Prompt 文件不存在: $PromptFile"
+    Write-Error "Prompt file not found: $PromptFile"
     exit 1
 }
 $raw = [System.IO.File]::ReadAllText((Resolve-Path $PromptFile))
@@ -87,17 +118,17 @@ try {
 }
 
 if ($promptList.Count -eq 0) {
-    Write-Error "Prompt 列表为空。"
+    Write-Error "Prompt list is empty."
     exit 1
 }
 
-# ---------- 输出目录 ----------
+# ---------- Output directory ----------
 if (-not $OutputDir -or $OutputDir.Trim() -eq "") {
     $OutputDir = Join-Path (Get-Location) ".claude\sensenova-images\batch_$(Get-Date -Format yyyyMMddHHmmss)"
 }
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
 
-# ---------- 执行 ----------
+# ---------- Execute ----------
 $items = [System.Collections.Generic.List[object]]::new()
 $seq = 0
 foreach ($entry in $promptList) {
@@ -105,24 +136,28 @@ foreach ($entry in $promptList) {
     $line = $entry.ToString().Trim()
     if ($line -eq "") { continue }
 
+    $aspectSwitch = if ($AspectRatio -and $AspectRatio.Trim() -ne "") { @("-AspectRatio", $AspectRatio) } else { @() }
+
     if ($Compose) {
         $fields = $line -split '\|'
         $subject = if ($fields.Count -ge 1) { $fields[0].Trim() } else { "" }
         $scene   = if ($fields.Count -ge 2) { $fields[1].Trim() } else { "" }
         $style   = if ($fields.Count -ge 3) { $fields[2].Trim() } else { "default" }
-        $prompt = & $composeScript -Subject $subject -Scene $scene -Style $style
+        $aspectArr = if ($aspectSwitch.Count -gt 0) { $aspectSwitch } else { @() }
+        $prompt = & $composeScript -Subject $subject -Scene $scene -Style $style @aspectArr
     } else {
         $prompt = $line
     }
 
     if ($DryRun) {
-        Write-Host "[DRY-RUN] #$seq size=$Size n=$N prompt=$prompt"
+        Write-Host "[DRY-RUN] #$seq size=$effectiveSize n=$N prompt=$prompt"
         $items.Add([ordered]@{ seq = $seq; prompt = $prompt; status = "dry-run"; error = $null; images = @() })
         continue
     }
 
-    # 调 API
-    $apiOut = & $callScript -Prompt $prompt -Size $Size -N $N 2>&1 | Out-String
+    # Call API
+    $apiArgs = @("-Prompt", $prompt, "-Size", $effectiveSize, "-N", $N)
+    $apiOut = & $callScript @apiArgs 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
         $items.Add([ordered]@{ seq = $seq; prompt = $prompt; status = "failed"; error = $apiOut; images = @() })
         Write-Warning "Item #$seq failed: $apiOut"
@@ -132,7 +167,7 @@ foreach ($entry in $promptList) {
     $resp = $null
     try { $resp = $apiOut | ConvertFrom-Json -ErrorAction Stop }
     catch {
-        $items.Add([ordered]@{ seq = $seq; prompt = $prompt; status = "failed"; error = "JSON 解析失败: $apiOut"; images = @() })
+        $items.Add([ordered]@{ seq = $seq; prompt = $prompt; status = "failed"; error = "JSON parse failed: $apiOut"; images = @() })
         continue
     }
 
@@ -162,21 +197,23 @@ foreach ($entry in $promptList) {
     Write-Host "  #$seq $($imagePaths.Count) image(s) saved"
 }
 
-# ---------- 写 manifest ----------
+# ---------- Write manifest ----------
 $manifest = [ordered]@{
-    createdAt = (Get-Date).ToUniversalTime().ToString("o")
-    model     = "sensenova-u1-fast"
-    size      = $Size
-    items     = @($items)
+    createdAt    = (Get-Date).ToUniversalTime().ToString("o")
+    model        = "sensenova-u1-fast"
+    size         = $effectiveSize
+    aspectRatio  = $AspectRatio
+    tier         = $Tier
+    items        = @($items)
 }
 $manifestPath = Join-Path $OutputDir "manifest.json"
 $manifest | ConvertTo-Json -Depth 10 | Out-File -FilePath $manifestPath -Encoding utf8
 
-# ---------- 摘要 ----------
+# ---------- Summary ----------
 $okCount   = @($items | Where-Object { $_.status -eq "ok" }).Count
 $failCount = @($items | Where-Object { $_.status -eq "failed" }).Count
 Write-Host ""
-Write-Host "=== 批量生成完成 ==="
-Write-Host "总数: $($items.Count)  |  成功: $okCount  |  失败: $failCount"
-Write-Host "输出目录: $OutputDir"
+Write-Host "=== Batch generation complete ==="
+Write-Host "Total: $($items.Count)  |  OK: $okCount  |  Failed: $failCount"
+Write-Host "Output: $OutputDir"
 Write-Host "Manifest: $manifestPath"
