@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     探活脚本：验证 SENSENOVA_API_KEY 有效且 /images/generations 端点可达。
 

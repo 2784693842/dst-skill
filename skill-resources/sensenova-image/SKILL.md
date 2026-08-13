@@ -21,13 +21,17 @@ description: Use when generating images via SenseNova text-to-image API from a t
 
 1. **校验配置**：读取 `SENSENOVA_API_KEY`（来自环境变量或项目 `.env`），缺失或空值立即报错并给出获取指引，不继续。
 2. **解析意图**：从用户自然语言提取——主提示词、目标比例、数量、风格倾向、是否系列生成。
-3. **组装提示词**：套用 `assets/prompt-templates.md` 的风格 / 质量后缀模板，必要时加负向约束；系列生成时复用已确认的角色 / 风格锚定段。
+3. **组装提示词**：套 `compose-prompt.ps1 -Subject <主体> -Scene <场景> -Style <风格键> -Mood <氛围> [-Negative]` 自动拼接风格后缀 / 质量后缀 / 负向约束（内置 11 个风格键：default/photoreal/anime/oil/watercolor/pixel/d3/cyberpunk/minimal/vintage/concept）；或用 `assets/prompt-templates.md` 的手写模板；系列生成时复用已确认的锚定段。
 4. **选 size**：按目标比例从 `references/sensenova-contract.md` 的规格表匹配；用户未指定比例时给出建议而非擅自猜测，默认 `2048x2048`（1:1）。
-5. **调用 API**：`call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n>`，返回 JSON。
-6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写 scratchpad 目录（`<项目>/.claude/sensenova-images/`）；URL 下载带 User-Agent + 超时 + 2 次重试；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错（防把错误 JSON 当图存）。
-7. **回显**：用 `Read(file_path)` 逐张呈现给用户（Claude 视觉能力），同时打印每张的**原图绝对路径**（方便用户直接打开）。
-8. **多图**：`n>1` 或批量 prompt 时依次 `Read`，每张附编号、生成参数和提示词摘要。
-9. **失败处理**：API 错误（鉴权失败 / 限流 / 内容违规 / 超时）映射为可读错误并给重试 / 调整建议，绝不吞错。
+5. **调用 API**（按场景选入口）：
+   - **单图/多图**：`call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n>`
+   - **风格变体**：`genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-Size] [-DryRun]`（自动拼 prompt + 调用 + 落地 + 写 manifest + 拼 contact sheet）
+   - **批量**：`batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-N] [-Size] [-DryRun]`（Compose 模式：每行 `主体|场景|风格`，走 compose-prompt 组装）
+6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写 scratchpad 目录（`<项目>/.claude/sensenova-images/`）；URL 下载带 User-Agent + 超时 + 2 次重试；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
+7. **回显**：用 `Read(file_path)` 逐张呈现给用户（Claude 视觉能力），同时打印每张的**原图绝对路径**。
+8. **多图/批量**：依次 `Read`；批量/变体模式自动写 `manifest.json`（含 seq/prompt/status/error/images）。
+9. **拼合对比**：多图时用 `make-contact-sheet.ps1 -ImagePaths <path1,path2,...> -Cols <N> -CellW <W> -CellH <H> [-NoLabel] -OutName <name>.png` 拼成网格 PNG，每格标序号+文件名，方便横向对比。
+10. **失败处理**：API 错误（鉴权失败 / 限流 / 内容违规 / 超时）映射为可读错误并给重试 / 调整建议，绝不吞错。
 
 ## 接口锚点
 
@@ -46,6 +50,9 @@ description: Use when generating images via SenseNova text-to-image API from a t
 - 模型名、端点、size 规格全部以 contract 快照为准，不硬编码易变项。
 - 用户未指定比例时给出建议，不擅自猜测。
 - 系列生成时锚定段一旦确认就复用，不每轮重写导致角色 / 风格漂移。
+- 批量 / 变体生成必须写 `manifest.json`，保证每个 prompt 的成功/失败/产物路径可追踪。
+- `compose-prompt.ps1` 是纯 prompt 组装（不调用 API），编排脚本通过 `&` 调用它，不回链写死。
+- contact sheet 用 GDI+ 渲染，无外部依赖；网格图片只用于对比，不替代原图。
 
 ## 验证
 
@@ -56,6 +63,11 @@ description: Use when generating images via SenseNova text-to-image API from a t
 - `SENSENOVA_API_KEY` 无效 / 过期 → 清晰报错（非 401 乱码）。
 - prompt 为空 → 报错。
 - 内容违规被拒 → 映射为可读错误，不崩溃。
+- `compose-prompt.ps1` 传入未知风格键 → Warning + 回退 default。
+- `genimage-variants.ps1 -DryRun` → 只打印计划不调 API。
+- `batch-genimage.ps1 -DryRun` → 只打印计划不调 API。
+- `make-contact-sheet.ps1` 输入 0 张图 → 报错。
+- `make-contact-sheet.ps1 -Cols 0` → 自动 sqrt 列数。
 
 ## 按需资源
 
@@ -63,3 +75,7 @@ description: Use when generating images via SenseNova text-to-image API from a t
 - 提示词模板（风格 / 质量 / 系列锚定）：`assets/prompt-templates.md`
 - 配置模板：`assets/templates/.env.example`
 - 探活脚本（验证 KEY + 连通性）：`assets/scripts/api-probe.ps1`
+- Prompt 组装器（11 种风格后缀 + 负向 + 质量）：`assets/scripts/compose-prompt.ps1`
+- 批量生成编排（读 prompt 文件 → 调 API → 落地 → manifest）：`assets/scripts/batch-genimage.ps1`
+- 风格变体编排（主体 + 多风格 → 拼 prompt → 出图 → contact sheet）：`assets/scripts/genimage-variants.ps1`
+- 多图拼合（GDI+ 网格 PNG + 标签）：`assets/scripts/make-contact-sheet.ps1`

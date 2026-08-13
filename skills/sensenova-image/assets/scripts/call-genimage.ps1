@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     调用 SenseNova 文生图 API（POST /v1/images/generations）。
 

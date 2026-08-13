@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     把 SenseNova 文生图返回的一张图的 URL 或 base64 落地为本地 PNG。
 
