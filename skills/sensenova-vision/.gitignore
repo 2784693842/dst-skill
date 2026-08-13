@@ -1,0 +1,22 @@
+# Image files (output from vision processing)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+manifest.json
+summary.json
+captions.json
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Cache (local)
+.caption_cache/
+
+# OS
+.DS_Store
+Thumbs.db
