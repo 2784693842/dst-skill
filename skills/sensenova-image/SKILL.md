@@ -52,6 +52,15 @@ description: Use when generating images via SenseNova text-to-image API from a t
 - 鉴权：`Authorization: Bearer $SENSENOVA_API_KEY`
 - 完整契约快照见 `references/sensenova-contract.md`（离线执行依据，不依赖在线文档）。
 
+## 水印限制（重要）
+
+**SenseNova 服务端在所有生成图片右下角自动叠加"日日新 sensenova"水印，无任何 API 参数可关闭。**
+
+- 官方 `sn-image-base` 底层调用 `text-to-image-no-enhance API`，请求体仅含 `model/prompt/size/n`，无负向字段、无水印开关。
+- prompt 中加入 `no watermark` 等术语**不可靠**（服务端水印是 post-processing 叠加，prompt 层面无法阻止）。
+- **唯一可靠的缓解方案**：后处理裁剪图片底部 5–10%，直接移除水印。裁剪脚本示例见 `assets/prompt-templates.md` 的"水印处理"章节。
+- `compose-prompt.ps1 -NoWatermark` 开关（及编排脚本透传）可作为尝试，但不应作为默认依赖。
+
 ## 不变量
 
 - `SENSENOVA_API_KEY` 绝不出现在终端输出、日志或产物文件中。

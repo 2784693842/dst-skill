@@ -34,6 +34,9 @@
     Treat each line as "subject | scene | style" pipe-delimited, run through compose-prompt.ps1.
     Format: `subject | scene | style_key` (e.g. "a dragon | over a castle | d3").
 
+.PARAMETER NoWatermark
+    When -Compose is active, append anti-watermark terms to each composed prompt.
+
 .EXAMPLE
     .\batch-genimage.ps1 -PromptFile prompts.txt -AspectRatio 16:9 -N 2
 
@@ -60,7 +63,9 @@ param(
 
     [switch]$DryRun,
 
-    [switch]$Compose
+    [switch]$Compose,
+
+    [switch]$NoWatermark
 )
 
 # ---------- Locate scripts ----------
@@ -124,7 +129,7 @@ if ($promptList.Count -eq 0) {
 
 # ---------- Output directory ----------
 if (-not $OutputDir -or $OutputDir.Trim() -eq "") {
-    $OutputDir = Join-Path (Get-Location) ".claude\sensenova-images\batch_$(Get-Date -Format yyyyMMddHHmmss)"
+    $OutputDir = Join-Path (Get-Location) "output\sensenova-images\batch_$(Get-Date -Format yyyyMMddHHmmss)"
 }
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
 
@@ -143,8 +148,9 @@ foreach ($entry in $promptList) {
         $subject = if ($fields.Count -ge 1) { $fields[0].Trim() } else { "" }
         $scene   = if ($fields.Count -ge 2) { $fields[1].Trim() } else { "" }
         $style   = if ($fields.Count -ge 3) { $fields[2].Trim() } else { "default" }
+        $wmSwitch = if ($NoWatermark) { @("-NoWatermark") } else { @() }
         $aspectArr = if ($aspectSwitch.Count -gt 0) { $aspectSwitch } else { @() }
-        $prompt = & $composeScript -Subject $subject -Scene $scene -Style $style @aspectArr
+        $prompt = & $composeScript -Subject $subject -Scene $scene -Style $style @wmSwitch @aspectArr
     } else {
         $prompt = $line
     }
@@ -207,7 +213,8 @@ $manifest = [ordered]@{
     items        = @($items)
 }
 $manifestPath = Join-Path $OutputDir "manifest.json"
-$manifest | ConvertTo-Json -Depth 10 | Out-File -FilePath $manifestPath -Encoding utf8
+$manifestJson = $manifest | ConvertTo-Json -Depth 10
+[System.IO.File]::WriteAllText($manifestPath, $manifestJson, (New-Object System.Text.UTF8Encoding($true)))
 
 # ---------- Summary ----------
 $okCount   = @($items | Where-Object { $_.status -eq "ok" }).Count

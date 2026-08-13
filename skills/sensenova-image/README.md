@@ -98,6 +98,18 @@ $prompt = & .\assets\scripts\compose-prompt.ps1 `
   -OutName comparison.png
 ```
 
+## 水印说明
+
+**SenseNova 服务端在所有生成图片右下角自动叠加"日日新 sensenova"水印，无任何 API 参数可关闭。**
+
+| 方法 | 可靠性 |
+|---|---|
+| 后处理裁剪底部 5–10% | ✅ 100% |
+| prompt 加入 `no watermark` 等术语 | ⚠️ 不可靠 |
+| API 参数 | ❌ 不可用 |
+
+`compose-prompt.ps1 -NoWatermark`（及 `genimage-variants.ps1 -NoWatermark`、`batch-genimage.ps1 -Compose -NoWatermark`）会追加反水印术语，但**仅作为尝试**，不可替代后处理裁剪。详见 `assets/prompt-templates.md` 的"水印处理"章节。
+
 ## 生成图不入库
 
 `.gitignore` 排除了 `*.png` / `*.jpg` / `*.webp` / `manifest.json` / `summary.json` / `contact_sheet_*.png`，保证生成图不进版本控制。

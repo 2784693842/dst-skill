@@ -19,7 +19,15 @@
     Mood words, e.g. "cinematic lighting, misty", appended after style.
 
 .PARAMETER Negative
-    Append negative constraints (default built-in negative table).
+    Append anti-quality negative constraints directly into the prompt text
+    (the SenseNova /images/generations API does not have a separate
+    negative-prompt field, so these terms are concatenated as prompt hints).
+
+.PARAMETER NoWatermark
+    Append anti-watermark terms to the prompt. Note: the SenseNova API
+    adds a server-side "日日新 sensenova" watermark; this only adds prompt
+    hints and is unreliable. Consider post-processing (crop bottom-right
+    corner) for a guaranteed result.
 
 .PARAMETER NoQuality
     Skip default quality suffix (for styles that already include quality words).
@@ -47,6 +55,8 @@ param(
 
     [switch]$Negative,
 
+    [switch]$NoWatermark,
+
     [switch]$NoQuality,
 
     [string]$AspectRatio = ""
@@ -68,6 +78,7 @@ $STYLE_SUFFIXES = [ordered]@{
 }
 
 $NEG_PREFIX = "low quality, worst quality, blurry, deformed, distorted, bad anatomy, extra limbs, watermark, text, signature, out of frame"
+$WM_PREFIX = "no watermark, no logo, no text, no signature, clean image, unbranded, without watermark"
 
 $styleKey = $Style.ToLower().Trim()
 if ($STYLE_SUFFIXES.Contains($styleKey)) {
@@ -101,6 +112,9 @@ if (-not $NoQuality -and -not ($suffix.Contains("highly detailed") -or $suffix.C
 }
 if ($Negative) {
     $prompt += ", " + $NEG_PREFIX
+}
+if ($NoWatermark) {
+    $prompt += ", " + $WM_PREFIX
 }
 
 # ---------- Length warning ----------

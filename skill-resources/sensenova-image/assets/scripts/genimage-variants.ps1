@@ -31,6 +31,11 @@
 .PARAMETER Negative
     Append negative constraints to each prompt.
 
+.PARAMETER NoWatermark
+    Append anti-watermark terms to each prompt (adds prompt hints;
+    SenseNova API adds a server-side watermark, so this is unreliable —
+    consider post-processing/cropping for a guaranteed result).
+
 .PARAMETER OutputDir
     Output directory; default <cwd>/.claude/sensenova-images/variants_<ts>.
 
@@ -67,6 +72,8 @@ param(
     [string]$Tier = "2k",
 
     [switch]$Negative,
+
+    [switch]$NoWatermark,
 
     [string]$OutputDir = "",
 
@@ -112,7 +119,7 @@ if ($AspectRatio -and $AspectRatio.Trim() -ne "") {
 
 # ---------- Output directory ----------
 if (-not $OutputDir -or $OutputDir.Trim() -eq "") {
-    $OutputDir = Join-Path (Get-Location) ".claude\sensenova-images\variants_$(Get-Date -Format yyyyMMddHHmmss)"
+    $OutputDir = Join-Path (Get-Location) "output\sensenova-images\variants_$(Get-Date -Format yyyyMMddHHmmss)"
 }
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null }
 
@@ -120,8 +127,9 @@ if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir
 $prompts = [System.Collections.Generic.List[object]]::new()
 foreach ($style in $Styles) {
     $negSwitch = if ($Negative) { @("-Negative") } else { @() }
+    $wmSwitch = if ($NoWatermark) { @("-NoWatermark") } else { @() }
     $aspectArr = if ($AspectRatio -and $AspectRatio.Trim() -ne "") { @("-AspectRatio", $AspectRatio) } else { @() }
-    $prompt = & $composeScript -Subject $Subject -Scene $Scene -Style $style -Mood $Mood @negSwitch @aspectArr
+    $prompt = & $composeScript -Subject $Subject -Scene $Scene -Style $style -Mood $Mood @negSwitch @wmSwitch @aspectArr
     $prompts.Add([ordered]@{ style = $style; prompt = $prompt })
 }
 
@@ -198,7 +206,8 @@ $manifest = [ordered]@{
     items        = @($items)
 }
 $manifestPath = Join-Path $OutputDir "manifest.json"
-$manifest | ConvertTo-Json -Depth 10 | Out-File -FilePath $manifestPath -Encoding utf8
+$manifestJson = $manifest | ConvertTo-Json -Depth 10
+[System.IO.File]::WriteAllText($manifestPath, $manifestJson, (New-Object System.Text.UTF8Encoding($true)))
 Write-Host ""
 Write-Host "Manifest: $manifestPath"
 

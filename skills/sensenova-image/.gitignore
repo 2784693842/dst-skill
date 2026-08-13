@@ -3,28 +3,38 @@
 *.png
 *.jpg
 *.jpeg
+*.gif
 *.webp
 *.bmp
 
 # 批量/变体生成产物
 manifest.json
 summary.json
+captions.json
 contact_sheet_*.png
 *-small.png
-
-# scratchpad 目录（可选，如果不想把整个目录都排除就注释掉）
-# .claude/
 
 # 工作区临时输出目录
 output/
 
 # 密钥/配置（含 API Key，绝不入库）
+# 注意：*.env 会误匹配 .env.example，用 ! 排除
 .env
-*.env
-.env.*
+!*.example
+.env.example
+
+# 本地缓存
+.caption_cache/
+
+# scratchpad 目录（可选）
+# .claude/
 
 # 临时文件
 __pycache__/
 *.pyc
 *.tmp
 *.bak
+*.log
+*.swp
+*.swo
+*~

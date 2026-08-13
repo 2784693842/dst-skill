@@ -34,6 +34,56 @@ photorealistic, 8k uhd, dslr, soft lighting, high quality, film grain, Fujifilm 
 low quality, worst quality, blurry, deformed, distorted, bad anatomy, extra limbs, watermark, text, signature, out of frame
 ```
 
+> ⚠️ SenseNova `/v1/images/generations` API **没有独立的 negative-prompt 字段**，负向约束只是作为提示词文本拼在末尾，效果有限。
+
+---
+
+## 水印处理 (Watermark)
+
+**事实**：SenseNova 服务端在所有生成图片的右下角自动叠加"日日新 sensenova"水印，**无任何 API 参数可关闭**（经官方 `sn-image-base` 源码确认，底层调用 `text-to-image-no-enhance API`，请求体仅含 `model/prompt/size/n` 四个字段）。
+
+### 缓解方案（按可靠性排序）
+
+| 方法 | 可靠性 | 说明 |
+|---|---|---|
+| 后处理裁剪右下角 | ✅ 100% | 裁剪图片底部 5–10%，直接移除水印 |
+| 提示词中加入反水印术语 | ⚠️ 不可靠 | prompt 层面无法阻止服务端 post-processing 叠加 |
+| API 参数 | ❌ 不可用 | 无此参数 |
+
+### 提示词层（`-NoWatermark` 开关）
+
+`compose-prompt.ps1` 提供 `-NoWatermark` 开关，会追加以下术语（**效果不可靠**，仅作为尝试）：
+
+```
+no watermark, no logo, no text, no signature, clean image, unbranded, without watermark
+```
+
+调用示例：
+```powershell
+& .\assets\scripts\compose-prompt.ps1 -Subject "a cat" -Scene "on a windowsill" -NoWatermark
+```
+
+### 后处理裁剪（推荐方案）
+
+生成后用 PowerShell 裁剪右下角：
+
+```powershell
+# 裁剪底部 8%，移除水印
+$src = "output\image.png"
+$img = [System.Drawing.Bitmap]::FromFile($src)
+$w = $img.Width
+$h = [int]($img.Height * 0.92)
+$clip = New-Object System.Drawing.Bitmap($w, $h)
+$g = [System.Drawing.Graphics]::FromImage($clip)
+$g.DrawImage($img, 0, 0, 0, 0, $w, $h, [System.Drawing.GraphicsUnit]::Pixel)
+$g.Dispose()
+$img.Dispose()
+$clip.Save($src)
+$clip.Dispose()
+```
+
+---
+
 ## 系列锚定段（跨轮复用，保证一致）
 
 系列生成时，把"角色 / 场景 / 风格"的锚定描述固定下来，**每轮都原样复用**，只改变动部分：

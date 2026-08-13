@@ -41,7 +41,7 @@ caption-vision.ps1 (进程外执行)
 
 1. **接收图片路径**：从用户消息或文件列表获取 `.png/.jpg/.jpeg/.gif/.webp/.bmp` 文件路径。
 2. **类型检测**：按文件名关键词自动匹配类型（chart/table/UI/diagram/general），也可用 `-Type` 手动指定。
-3. **组装 prompt**：根据类型选取内置 prompt 模板（见 `references/vision-contract.md`），或用 `--prompt` 自定义。
+3. **组装 prompt**：根据类型选取内置 prompt 模板（见 `references/vision-contract.md`），或用 `-Prompt` 自定义。
 4. **调用识图脚本**：
 
    ```powershell
