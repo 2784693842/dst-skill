@@ -3,11 +3,11 @@ name: dst-shader-authoring
 description: Use when creating, compiling, or debugging DST shaders — .vs/.ps/.ksh files, ShaderCompiler.exe, world AnimState bloom-pass effects, UIAnim or ImageWidget effects, VFXEffect particles, PostProcessor filters and multipass chains, samplers/uniforms, or AddModShadersInit/AddModShadersSortAndEnable. 中文触发：Shader、着色器、后处理、滤镜、粒子特效、bloom、uniform、sampler、ksh、编译。信号：ShaderCompiler.exe、.vs/.ps/.ksh、PostProcessor、SetBloomEffectHandle、AddModShadersInit。
 ---
 
-# DST Shader Authoring
+# DST Shader 编写
 
 为 DST Mod 编写 shader 时，先识别渲染管线，再使用对应模板；不要将不同管线的顶点输入、uniform 或 sampler 直接混用。
 
-## 执行流程
+## 工作流
 
 1. 确认目标是世界 `AnimState` 的 bloom pass、UI `UIAnim`、UI `Image`、`VFXEffect` 还是全屏 `PostProcessor`。
 2. 读取 `references/shader-contracts.md` 中该管线的输入契约、标准 uniform 和 Lua 绑定。
@@ -18,7 +18,7 @@ description: Use when creating, compiling, or debugging DST shaders — .vs/.ps/
 7. 使用 `Asset("SHADER", "shaders/name.ksh")` 注册，并用相应 Lua 入口加载。
 8. 在游戏中验证；报告编译器、加载、排序或 runtime 的实际错误，不要把未运行的编译说成成功。
 
-## 选择管线
+### 选择管线
 
 | 目标 | 使用模板 | 绑定 API |
 | --- | --- | --- |
@@ -33,7 +33,34 @@ description: Use when creating, compiling, or debugging DST shaders — .vs/.ps/
 
 不要将 `ground.ksh`、`ocean.ksh`、`waves.ksh`、`minimap.ksh` 用于普通 Mod UI 或实体；它们依赖专用 C++ 渲染组件。
 
-## 编写规则
+### 编译与部署
+
+默认 Mod Tools 路径为：
+
+```powershell
+& "D:\steam\steamapps\common\Don't Starve Together\mod_tools\tools\bin\ShaderCompiler.exe" `
+  -little <name> <vertex.vs> <fragment.ps> <name.ksh> -oglsl
+```
+
+将结果放到 Mod 的 `shaders/` 目录。若编译器因旧的 Cg/VC90 依赖无法启动，说明实际错误并停止；不要手改 `.ksh` 或将未验证的输出当成可用资源。
+
+## 源码锚点
+
+以下源码路径为本技能所有规则、不变量与验证清单的事实依据，执行前应优先从当前 DST 安装中读取对应文件：
+
+| 路径 | 内容 |
+|------|------|
+| `data/scripts/gamelogic.lua` | `RENDERPASS` 枚举及各 pass 默认 effect；bloom 默认 `anim_bloom.ksh` |
+| `data/databundles/shaders/anim.ksh` | 世界动画主 pass：图集、时间、颜色变换、光照 |
+| `data/databundles/shaders/anim_bloom.ksh` | 世界 `AnimState` bloom pass 输入与默认输出 |
+| `data/databundles/shaders/ui_anim.ksh` | UI `UIAnim` 的 `AnimState` 主 pass |
+| `data/databundles/shaders/ui_anim_cc.ksh` | `SetDefaultEffectHandle()` 的本地可验证用法 |
+| `data/databundles/shaders/ui.ksh` | 最小 UI `ImageWidget` 输入布局 |
+| `data/databundles/shaders/postprocesseffects.lua` | 后处理构建、排序、sampler、uniform |
+| `data/scripts/widgets/image.lua` | `SetEffectParams` / `EnableEffectParams2` 等 UI 参数写入 API |
+| `data/scripts/prefabs/mistparticle.lua` | `VFXEffect` 资源绑定范例 |
+
+## 不变量
 
 - 使用 DST 自带的旧式 GLSL：`attribute`、`varying`、`texture2D`、`gl_FragColor`；不要添加 `#version`、`layout`、`in/out`、UBO 或现代 GLSL 特性。
 - 使顶点和片元阶段的每个 `varying` 名称、类型、维度完全一致。
@@ -46,18 +73,7 @@ description: Use when creating, compiling, or debugging DST shaders — .vs/.ps/
 - `PostProcessor` 晚于 `modmain.lua` 创建；在 `AddModShadersInit`、`AddModShadersSortAndEnable` 回调或实际调用的辅助函数内读取 `GLOBAL.PostProcessor`，不要在入口加载时缓存 nil。附带模板已处理该时序。
 - 使用从 `GLOBAL` 局部化的 `resolvefilepath()` 传递 Mod 自己的运行时 shader 与纹理路径；`Asset` 注册仍使用 Mod 相对路径。
 
-## 编译与部署
-
-默认 Mod Tools 路径为：
-
-```powershell
-& "D:\steam\steamapps\common\Don't Starve Together\mod_tools\tools\bin\ShaderCompiler.exe" `
-  -little <name> <vertex.vs> <fragment.ps> <name.ksh> -oglsl
-```
-
-将结果放到 Mod 的 `shaders/` 目录。若编译器因旧的 Cg/VC90 依赖无法启动，说明实际错误并停止；不要手改 `.ksh` 或将未验证的输出当成可用资源。
-
-## 后处理的特殊顺序
+### 后处理的特殊顺序
 
 - 在 `AddModShadersInit` 中创建 effect、texture sampler、sampler effect 和 uniform。
 - 在 `AddModShadersSortAndEnable` 中调用 `SetPostProcessEffectBefore/After`，然后启用最终 postprocess effect。
@@ -65,7 +81,7 @@ description: Use when creating, compiling, or debugging DST shaders — .vs/.ps/
 - sampler effect 的 `SAMPLER[0]` 来源由 `SamplerEffectBase` 决定；以另一个 sampler effect 为输入时，使用 `SamplerEffectBase.Shader` 和前一 pass 的 ID。
 - 从 `assets/templates/postprocess_modmain.lua` 开始编写单 pass；多 pass 先读取 `references/postprocess-multipass.md`，再复制对应模板。
 
-## 验证清单
+## 验证
 
 1. `.ksh` 已由 `.vs` 和 `.ps` 编译得到，未手工修改二进制容器。
 2. `Assets` 已注册 shader，以及所有自定义纹理。

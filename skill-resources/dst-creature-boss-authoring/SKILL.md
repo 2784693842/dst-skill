@@ -37,3 +37,7 @@ description: Use when building a complete DST creature or boss that spans prefab
 - 玩家离开、Boss 卸载或服务器回滚后场地与召唤物一致。
 - 多人目标切换、仇恨、掉落归属和性能符合设计。
 
+## 按需资源
+
+- 处理 Boss 动画资源（导入/导出/帧序列）时使用 `modtool-automation` 技能。
+

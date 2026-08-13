@@ -30,6 +30,8 @@ description: 分发到对应的 DST 模组技能（dst-*）
 6. 修改只落在用户指定的 Mod 目录，不改游戏源码。
 7. 完成后按所选技能的要求验证，并说明用了哪些技能。
 
+> **例外**：`modtool-automation` 是工具链技能，不属于 DST 源码范畴，无需源码锚点验证；其执行依据为 SKILL.md 中的「接口锚点 → 不变量 → 验证」。
+
 ## 第一步：分发
 
 根据下面的技能目录，调用 Skill 工具加载对应**精确全名**。只加载真正相关的，不要贪多。
@@ -82,6 +84,7 @@ description: 分发到对应的 DST 模组技能（dst-*）
 - dst-localization-speech — 本地化、角色台词、PO 翻译
 - dst-skins-symbol-overrides — 外观变体、Build 切换、Symbol 覆盖
 - dst-shader-authoring — .vs/.ps/.ksh、后处理、VFX shader
+- modtool-automation — DST Mod Tool 自动化、Lua 脚本注入、截图 diff、动画导入/导出
 
 ### 工程化
 - dst-performance-profiling — 性能卡顿、FindEntities/OnUpdate 热点、优化
@@ -98,6 +101,7 @@ description: 分发到对应的 DST 模组技能（dst-*）
 - **不同步类**：RPC/复制/netvar 设计 → `dst-networking-rpc`；已成事实的不同步故障排查 → `dst-debugging-testing`。
 - **界面类**：自定义控件/列表/布局 → `dst-ui-widget-authoring`；HUD/屏幕/输入/弹窗 → `dst-hud-screens-input`。
 - **做武器/装备**：`dst-inventory-equipment-containers`（装备栏/耐久/容器）+ `dst-combat-weapons-projectiles`（伤害数值）双加载。
+- **Mod Tool 自动化 vs 动画资源**：用 DST Mod Tool 自动化导入/编辑/导出动画 → `modtool-automation`；手写动画资源（.ani/.bank）或做图集 → `dst-assets-animation-atlas`。涉及工具链操作（script --stdin、截图 diff）时优先 modtool-automation。
 
 ## 第二步：执行
 

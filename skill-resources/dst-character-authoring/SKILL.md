@@ -37,3 +37,7 @@ description: Use when adding a playable DST character — player prefab, AddModC
 - 角色在主机、专服客户端和洞穴中均能选择、生成和重连。
 - 死亡、复活、换人、保存重载后专属状态不重复或丢失。
 - 缺少可选皮肤、技能或配置时仍能使用基础角色。
+
+## 按需资源
+
+- 处理角色动画资源（导入/导出/帧序列）时使用 `modtool-automation` 技能。
