@@ -3,37 +3,29 @@
 
 用法：python ktex_ascii.py <tex路径> [--xml xxx.xml] [--element name] [--cols 80] [--rows 36]
 
-依赖：ktex_decode.py（同目录）。
+支持 --key value 和 --key=value 两种形式。
+
+依赖：ktex_lib.py（同目录）。
 """
+import re
 import sys
 import os
-import struct
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ktex_decode import parse_ktex, decode_mip
+from ktex_lib import parse_ktex, decode_mip, stats
 
 # ---------------------------------------------------------------------------
 # 色相 → 字符
 # ---------------------------------------------------------------------------
 
-HUE_CHARS = {
-    "R": "R",
-    "G": "G",
-    "B": "B",
-    "C": "c",
-    "M": "m",
-    "Y": "y",
-    "K": "K",
-    "W": "W",
-}
-BRIGHT_CHARS = " .:-=+*#%@"  # 低到高
+BRIGHT_CHARS = " .:-=+*#%@"
 
 
-def rgb_to_hue_char(r, g, b, a):
+def rgb_to_hue_char(r: int, g: int, b: int, a: int) -> str:
     if a < 40:
         return " "
     mx, mn = max(r, g, b), min(r, g, b)
-    if mx - mn < 24:  # 灰
+    if mx - mn < 24:
         v = (r + g + b) / 3
         if v < 40:
             return "K"
@@ -56,15 +48,14 @@ def rgb_to_hue_char(r, g, b, a):
     return "?"
 
 
-def ascii_preview(rgba, w, h, cols=72, rows=34):
-    """纯字节操作实现缩略字符画（不依赖 PIL）。"""
+def ascii_preview(rgba: bytes, w: int, h: int, cols: int = 72, rows: int = 34) -> list[str]:
+    """纯字节操作实现缩略字符画。"""
     scale_x = w / max(cols, 1)
     scale_y = h / max(rows, 1)
     out = []
     for y in range(rows):
         line = []
         for x in range(cols):
-            # 取 2×2 区域均值
             x0 = int(x * scale_x)
             y0 = int(y * scale_y)
             x1 = min(x0 + 2, w)
@@ -88,7 +79,7 @@ def ascii_preview(rgba, w, h, cols=72, rows=34):
     return out
 
 
-def grid_stats(rgba, w, h, grid=4):
+def grid_stats(rgba: bytes, w: int, h: int, grid: int = 4) -> list[str]:
     cw = w // max(grid, 1)
     ch = h // max(grid, 1)
     lines = []
@@ -114,15 +105,30 @@ def grid_stats(rgba, w, h, grid=4):
     return lines
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    opts = {}
-    for i, a in enumerate(sys.argv[1:]):
-        if a.startswith("--"):
-            key = a[2:]
-            if i + 2 < len(sys.argv) and not sys.argv[i + 2].startswith("--"):
-                opts[key] = sys.argv[i + 2]
+def _parse_args(argv: list[str]) -> tuple[str, dict[str, str]]:
+    """解析 CLI 参数。支持 --key value 和 --key=value。
 
+    返回 (位置参数列表, 选项字典)。
+    """
+    args = []
+    opts = {}
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if "=" in a and a.startswith("--"):
+            key, _, val = a.partition("=")
+            opts[key[2:]] = val
+        elif a.startswith("--") and i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+            opts[a[2:]] = argv[i + 1]
+            i += 1
+        else:
+            args.append(a)
+        i += 1
+    return args, opts
+
+
+def main() -> None:
+    args, opts = _parse_args(sys.argv[1:])
     if not args:
         print(__doc__)
         sys.exit(1)
@@ -130,7 +136,8 @@ def main():
     cols = int(opts.get("cols", 72))
     rows = int(opts.get("rows", 34))
 
-    data = open(tex, "rb").read()
+    with open(tex, "rb") as f:
+        data = f.read()
     parsed = parse_ktex(data)
     if parsed is None:
         print("ERROR: not a valid KTEX file", file=sys.stderr)
@@ -143,12 +150,14 @@ def main():
     w, h = mips[0][0], mips[0][1]
 
     # 如果给了 xml + element，裁剪元素区域
-    if opts.get("xml") and opts.get("element"):
-        import re
-        xml = open(opts["xml"], encoding="utf-8", errors="ignore").read()
+    xml_path = opts.get("xml")
+    element = opts.get("element")
+    if xml_path and element:
+        with open(xml_path, encoding="utf-8", errors="ignore") as f:
+            xml = f.read()
         m = re.search(
             r'<Element name="%s" u1="([\d.]+)" u2="([\d.]+)" v1="([\d.]+)" v2="([\d.]+)"'
-            % re.escape(opts["element"]),
+            % re.escape(element),
             xml,
         )
         if m:
@@ -179,8 +188,6 @@ def main():
     )
     for line in grid_stats(rgba, w, h, 4):
         print("  " + line)
-    # 整体统计
-    from ktex_decode import stats
 
     s = stats(rgba, w, h)
     print(
@@ -192,4 +199,8 @@ def main():
 
 
 if __name__ == "__main__":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except AttributeError:
+        pass
     main()
