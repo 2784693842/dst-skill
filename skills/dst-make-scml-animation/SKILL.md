@@ -1,36 +1,11 @@
 ---
 name: dst-make-scml-animation
-description: Analyze, design, create, modify, and audit Spriter SCML animation assets for Don't Starve Together. Use for DST mod actions, animation naming and timing, directional action sets, frame posing, pivots, layer ordering, symbol swaps, transparent PNG parts, SCML/XML repair, or compatibility checks against unpacked game animation references. 中文触发：SCML、动画制作、动作制作、动画命名、帧节奏、四方向、动作方向、side 朝向、帧姿态、pivot、图层顺序、符号替换、SCML 修复。信号：SetBank、SetBuild、PlayAnimation、PushAnimation、OverrideSymbol、analyze_scml.py、scml-production.md。
+description: Analyze, design, create, modify, and audit Spriter SCML animation assets for Don't Starve Together. Use for DST mod actions, animation naming and timing, directional action sets, frame posing, pivots, layer ordering, symbol swaps, transparent PNG parts, SCML/XML repair, or compatibility checks against unpacked game animation references.
 ---
 
 # DST SCML 动作制作
 
 把游戏运行时契约、动作可读性和 SCML 数据一致性作为同一项工作处理。先选同类型原版参考，再制作动作，不要从单一通用模板猜测全部规则。
-
-## 工具链与依赖
-
-| 依赖 | 用途 | 状态 |
-|---|---|---|
-| Python 3.8+ | 运行配套脚本 | 系统自带 |
-| `scripts/analyze_scml.py` | 解析/审计 SCML（无需 Pillow，纯 stdlib） | skill 自带 |
-| `references/scml-production.md` | SCML 数据约束、动作组织/设计、验证 | skill 自带 |
-
-**脚本调用约定**：以下 `python scripts/...` 命令假定**cwd = 该 skill 根目录**。从 skill 目录运行即可复现参考统计（全量语料 2247 SCML / 15695 animation）。
-
-### 与上下游 skill 的关系
-
-```
-sensenova-image（AI 出图）→ dst-texture-style（贴图风格匹配）
-        ↓
-dst-character-parts（拆件 + 审计）
-        ↓
-dst-make-scml-animation  ← 本 skill：SCML 动作制作 + 验证
-        ↓
-dst-assets-animation-atlas（SCML 编译 / KTEX 打包）
-```
-
-- **上游 `dst-texture-style`**：需要新贴图时调用（步骤 7），按关节/遮挡/symbol 替换边界拆件。
-- **下游 `dst-assets-animation-atlas`**：SCML 制作完成后交给它编译进 DST；本 skill 只保证 SCML/PNG 数据一致。
 
 ## 工作流
 
@@ -41,9 +16,9 @@ dst-assets-animation-atlas（SCML 编译 / KTEX 打包）
 2. 选择最近的原版参考。
    - 优先匹配资源类别、镜头方向、动作职责和运行时接法，不要只按外观相似选择。
    - 物品参考物品，建筑参考建筑，角色或生物参考相同方向集，FX 参考同生命周期特效。
-3. 读取 `references/scml-production.md`。
-   - 制作或修复 XML 时读取"SCML 数据约束"和"验证"部分。
-   - 设计动作表时读取"动作组织"和"动作设计"部分。
+3. 读取 [references/scml-production.md](references/scml-production.md)。
+   - 制作或修复 XML 时读取“SCML 数据约束”和“验证”部分。
+   - 设计动作表时读取“动作组织”和“动作设计”部分。
 4. 审计参考与目标。
    - 从技能目录运行：
 
@@ -61,9 +36,9 @@ dst-assets-animation-atlas（SCML 编译 / KTEX 打包）
    - 在游戏实际显示尺寸检查轮廓、重心、接触点和方向，不以编辑器放大图替代。
    - 循环动作先闭合首尾速度与形状，再增加次级摆动。
 7. 制作部件与 pivot。
-   - 需要新贴图时使用 `dst-texture-style`，按关节、遮挡和 symbol 替换边界拆件。
+   - 需要新贴图时使用 `$dst-texture-style`，按关节、遮挡和 symbol 替换边界拆件。
    - 同一视觉部件的换帧保持语义 pivot 稳定；更换裁切框时补偿坐标。
-   - 保留参考中必要的负缩放、非中心 pivot 和超界 pivot，不做无依据的"清理"。
+   - 保留参考中必要的负缩放、非中心 pivot 和超界 pivot，不做无依据的“清理”。
 8. 组织时间轴。
    - 对照参考使用 `curve_type="instant"`、显式 mainline key、object_ref 和 z_index。
    - 通过对象进入或退出 mainline 表达显隐；不要假设 alpha 动画会匹配现有导出链路。
@@ -101,16 +76,48 @@ dst-assets-animation-atlas（SCML 编译 / KTEX 打包）
 - 采用的原版参考路径与有意偏离之处；
 - 分析器结果和未能执行的游戏内验证。
 
-## 不变量
 
-- SCML 全部引用必须闭合：folder/file → timeline/key → object_ref → mainline/key。
-- 交付目标必须通过 `analyze_scml.py` 的 PNG 存在性和尺寸检查（`--skip-image-checks` 只用于大语料探索）。
-- 所有 `*_side` 动作原生朝右；左朝向一律由运行时镜像，不在资源里伪造。
-- 语义 pivot 跨帧稳定；裁切框变更必须同步补偿坐标。
+---
 
-## 验证
+## 附录：本仓库本地化适配（正文以上保持上游 zip 原版）
 
-- `analyze_scml.py <reference.scml> <target.scml>` 无缺图、无尺寸不符、无断链。
-- 四方向 `idle/walk/attack/death` 逐项检查 side 镜像后无武器手/盾牌手/肩甲穿层。
-- 游戏内实机检查：首帧无闪烁、末帧无跳变、循环无停顿、脚底无滑动。
-- 与 `dst-assets-animation-atlas` 编译联动：SCML 编译进 DST 后动画可正常播放。
+> 本 skill 从上游 7z 包吸收。上方正文为上游原版**逐字节保留**；以下为在本机 Claude Code 环境中的适配层，非上游原始内容。
+
+### 中文触发词
+
+SCML、动画制作、动作制作、动画命名、帧节奏、四方向、动作方向、side 朝向、帧姿态、pivot、图层顺序、符号替换、SCML 修复。
+
+### 与上下游 skill 的关系
+
+```
+sensenova-image（AI 出图）
+        ↓
+dst-texture-style（贴图风格匹配）
+        ↓
+dst-character-parts（拆件 + 审计）
+        ↓
+dst-make-scml-animation  ← 本 skill（SCML 动作制作）
+        ↓
+dst-assets-animation-atlas（SCML 编译 / KTEX 打包）
+```
+
+### 引用约定（正文中的引用如何落到本仓库）
+
+- 正文 `$dst-texture-style` → 本仓库「dst-texture-style」skill。
+- 正文 `$dst-assets-animation-atlas`（若出现）→ 本仓库「dst-assets-animation-atlas」skill。
+- 正文 `$dst-character-parts`（若出现）→ 本仓库「dst-character-parts」skill。
+
+### 脚本调用约定
+
+以下 `python scripts/...` 命令假定 **cwd = 本 skill 根目录**。`analyze_scml.py` 纯 Python 标准库，无 Pillow 依赖。
+
+### 本仓库不变量（追加）
+
+- **禁止用 `Read` 工具直接读取图片文件**（PNG/JPG/WebP 等）；识图走 `sensenova-vision` 的 `caption-vision.ps1`。
+- SCML 断言以正文为准：引用闭合、交付目标过 PNG 存在性与尺寸检查。
+
+### 本仓库验证（追加）
+
+- `python scripts/analyze_scml.py <reference.scml> <target.scml>` 无缺图、无尺寸不符、无断链。
+- 四方向 `idle_loop_side / walk_loop_side / attack_side / death_side` 镜像检查无穿层。
+- 与 `dst-assets-animation-atlas` 编译联动，SCML 进 DST 后动画可正常播放。

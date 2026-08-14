@@ -1,40 +1,11 @@
 ---
 name: dst-texture-style
-description: Analyze, art-direct, generate, edit, split, and audit transparent PNG textures that must fit the hand-drawn visual language of Don't Starve Together. Use for DST mod items, creatures, buildings, UI symbols, animation parts, effects, style-matching briefs, ImageGen prompts, silhouettes, linework, palettes, alpha edges, pivots, or texture consistency checks against unpacked game references. 中文触发：贴图、贴图风格、材质匹配、原画风、DST 手绘、纹理分析、透明 PNG、线稿、配色、描边、alpha 边缘、pivot、拆件边界。信号：analyze_textures.py、texture-style.md、ImageGen、imagegen。
+description: Analyze, art-direct, generate, edit, split, and audit transparent PNG textures that must fit the hand-drawn visual language of Don't Starve Together. Use for DST mod items, creatures, buildings, UI symbols, animation parts, effects, style-matching briefs, ImageGen prompts, silhouettes, linework, palettes, alpha edges, pivots, or texture consistency checks against unpacked game references.
 ---
 
 # DST 贴图风格
 
-以同类原版资源为局部风格基准，制作可在游戏实际尺寸中读取、可被 SCML 正确装配的透明 PNG。不要把"黑色描边加旧颜色"当作完整风格。
-
-## 工具链与依赖
-
-| 依赖 | 用途 | 状态 |
-|---|---|---|
-| Python 3.8+ | 运行配套脚本 | 系统自带 |
-| Pillow (`PIL`) | 读取/度量 PNG 像素属性 | 需 `pip install Pillow`；本机已装 |
-| `scripts/analyze_textures.py` | 定量分析画布/边界/明度/彩度 | skill 自带 |
-| `references/texture-style.md` | 风格证据、线稿/配色/拆件/ImageGen 结构 | skill 自带 |
-
-**脚本调用约定**：以下 `python scripts/...` 命令假定 **cwd = 该 skill 根目录**。从 skill 目录运行即可复现参考样本统计。
-
-### 与上下游 skill 的关系
-
-```
-sensenova-image（AI 出图）
-        ↓
-dst-texture-style  ← 本 skill：贴图风格匹配 + 定量分析
-        ↓
-dst-character-parts（拆件 + pivot 对齐 + 审计）
-        ↓
-dst-make-scml-animation（SCML 动作制作）
-        ↓
-dst-assets-animation-atlas（编译打包）
-```
-
-- **上游 `sensenova-image`**：用户要求实际生成/编辑位图时，把本 skill 的参考选择、视角、轮廓、线稿、配色、透明背景、拆件要求写进 prompt（并显式传 `watermark=false`）。
-- **下游 `dst-character-parts`**：拆件、pivot 对齐、审计交给它；本 skill 负责风格与视觉性质（参考/线稿/配色/transparent 边缘）。
-- **下游 `dst-make-scml-animation`**：与它协同确定 pivot 和裁切框。
+以同类原版资源为局部风格基准，制作可在游戏实际尺寸中读取、可被 SCML 正确装配的透明 PNG。不要把“黑色描边加旧颜色”当作完整风格。
 
 ## 工作流
 
@@ -44,7 +15,7 @@ dst-assets-animation-atlas（编译打包）
 2. 选择同类参考。
    - 至少选择 3 个同职责、同尺度、同材质或同动画拓扑的原版 PNG。
    - 优先参考同一 build 或相邻资产族，不从角色脸、UI 图标和水滴特效之间取平均风格。
-3. 读取 `references/texture-style.md`。
+3. 读取 [references/texture-style.md](references/texture-style.md)。
    - 画世界物体或生物时读取线稿、形体、明度、材质和拆件部分。
    - 画 FX、阴影或 UI 时读取对应例外部分。
 4. 测量参考，而不是猜测。
@@ -67,14 +38,13 @@ dst-assets-animation-atlas（编译打包）
    - 降低大面积彩度，让高彩度集中在眼睛、宝石、火焰、魔法或交互部件。
    - 让材质痕迹跟随形体和受力方向，不叠通用噪声滤镜。
 8. 生成或编辑位图。
-   - 用户要求实际生成或编辑光栅资产时，调用 `sensenova-image`（AI 出图），把本 skill 的参考选择、视角、轮廓、线稿、配色、透明背景和拆件要求写进提示；**显式传 `watermark=false`**。
+   - 用户要求实际生成或编辑光栅资产时，调用 `$imagegen`，把本 skill 的参考选择、视角、轮廓、线稿、配色、透明背景和拆件要求写进提示。
    - 对生成结果执行人工式清理：修正结构、减少无意义细节、统一线重、重画透明边和接缝。
    - 不用纯文本风格说明代替用户要求的图片产物。
-   - **禁止用 `Read` 工具读图片文件**：识图/校验走 `sensenova-vision` 的 `caption-vision.ps1`。
 9. 为动画拆件。
    - 按关节、遮挡变化、symbol 替换和独立运动拆分，不按颜色机械切块。
    - 每个部件保留完整描边与少量透明边；被遮挡处留足覆盖，不在动作中露缝。
-   - 与 `dst-make-scml-animation` 协同确定 pivot 和裁切框，与 `dst-character-parts` 对齐画布和审计。
+   - 与 `$dst-make-scml-animation` 协同确定 pivot 和裁切框。
 10. 检查并交付。
    - 在浅色、深色和棋盘背景检查透明边与白边。
    - 在 1x 游戏尺寸检查轮廓、焦点、材质和线条密度。
@@ -100,17 +70,49 @@ dst-assets-animation-atlas（编译打包）
 - 颜色、材质、状态变体与动画接缝说明；
 - 1x 尺寸、浅深背景和分析器检查结果。
 
-## 不变量
 
-- **禁止用 `Read` 工具直接读图片文件**；识图走 `sensenova-vision` 的 `caption-vision.ps1`。
-- AI 生成图必须显式传 `watermark=false`，并做人工式清理（不直接用模型原始输出交付）。
-- 参考选择必须"同职责、同尺度、同材质或同动画拓扑"，不以全局平均代替局部参考。
+---
+
+## 附录：本仓库本地化适配（正文以上保持上游 zip 原版）
+
+> 本 skill 从上游 7z 包吸收。上方正文为上游原版**逐字节保留**；以下为在本机 Claude Code 环境中的适配层，非上游原始内容。
+
+### 中文触发词
+
+贴图、贴图风格、材质匹配、原画风、DST 手绘、纹理分析、透明 PNG、线稿、配色、描边、alpha 边缘、pivot、拆件边界。
+
+### 与上下游 skill 的关系
+
+```
+sensenova-image（AI 出图，watermark=false）
+        ↓
+dst-texture-style  ← 本 skill（贴图风格匹配）
+        ↓
+dst-character-parts（拆件 + pivot 对齐 + 审计）
+        ↓
+dst-make-scml-animation（SCML 动作制作）
+        ↓
+dst-assets-animation-atlas（编译打包）
+```
+
+### 引用约定（正文中的引用如何落到本仓库）
+
+- 正文 `$imagegen` → 本仓库「sensenova-image」skill，**显式传 `watermark=false`**。
+- 正文 `$dst-make-scml-animation` → 本仓库「dst-make-scml-animation」skill。
+
+### 脚本调用约定
+
+以下 `python scripts/...` 命令假定 **cwd = 本 skill 根目录**。`analyze_textures.py` 依赖 Pillow（本机已装）。
+
+### 本仓库不变量（追加）
+
+- **禁止用 `Read` 工具直接读取图片文件**；识图走 `sensenova-vision` 的 `caption-vision.ps1`。
+- AI 生成图必须**显式传 `watermark=false`**，并做人工式清理（不直接用模型原始输出交付）。
 - 透明 RGBA、无白边/黑边/棋盘格、背景 alpha=0。
-- 交付前必须过 `analyze_textures.py` 的数值检查（画布、有效边界、明度、彩度）。
 
-## 验证
+### 本仓库验证（追加）
 
-- `analyze_textures.py <目标PNG> --summary-only` 输出可解释的画布/边界/明度/彩度指标。
+- `python scripts/analyze_textures.py <目标PNG> --summary-only` 输出可解释的画布/边界/明度/彩度指标。
 - 浅色、深色、棋盘背景下透明边无白边、无脏边。
 - 1x 游戏尺寸下轮廓、焦点、材质和线条密度可读。
 - 与参考并排比较属于同一视觉世界，且不是原资源复制品。
