@@ -33,8 +33,12 @@
 
 .PARAMETER NoWatermark
     Append anti-watermark terms to each prompt (adds prompt hints;
-    SenseNova API adds a server-side watermark, so this is unreliable —
-    consider post-processing/cropping for a guaranteed result).
+    legacy switch, kept for backward compatibility — the API-level
+    -Watermark switch is the authoritative control).
+
+.PARAMETER Watermark
+    Pass through to call-genimage.ps1: overlay the sensenova watermark.
+    Default $false (no watermark). Must be explicitly set.
 
 .PARAMETER OutputDir
     Output directory; default <cwd>/.claude/sensenova-images/variants_<ts>.
@@ -74,6 +78,8 @@ param(
     [switch]$Negative,
 
     [switch]$NoWatermark,
+
+    [bool]$Watermark = $false,
 
     [string]$OutputDir = "",
 
@@ -157,7 +163,7 @@ foreach ($p in $prompts) {
     Write-Host ""
     Write-Host "[#] Style $($p.style) / $($prompts.Count)"
 
-    $apiArgs = @("-Prompt", $p.prompt, "-Size", $effectiveSize, "-N", 1)
+    $apiArgs = @("-Prompt", $p.prompt, "-Size", $effectiveSize, "-N", 1, "-Watermark", $Watermark)
     $apiOut = & $callScript @apiArgs 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "[$($p.style)] API call failed: $apiOut"

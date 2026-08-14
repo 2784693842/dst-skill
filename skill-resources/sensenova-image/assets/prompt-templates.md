@@ -40,30 +40,41 @@ low quality, worst quality, blurry, deformed, distorted, bad anatomy, extra limb
 
 ## 水印处理 (Watermark)
 
-**事实**：SenseNova 服务端在所有生成图片的右下角自动叠加"日日新 sensenova"水印，**无任何 API 参数可关闭**（经官方 `sn-image-base` 源码确认，底层调用 `text-to-image-no-enhance API`，请求体仅含 `model/prompt/size/n` 四个字段）。
+**事实**：SenseNova 服务端默认在所有生成图片右下角叠加"日日新 sensenova"水印。
 
-### 缓解方案（按可靠性排序）
+### 官方 API 参数（推荐）
 
-| 方法 | 可靠性 | 说明 |
-|---|---|---|
-| 后处理裁剪右下角 | ✅ 100% | 裁剪图片底部 5–10%，直接移除水印 |
-| 提示词中加入反水印术语 | ⚠️ 不可靠 | prompt 层面无法阻止服务端 post-processing 叠加 |
-| API 参数 | ❌ 不可用 | 无此参数 |
+请求体传入 `watermark: false` 可关闭水印，**当前免费公测中**，后续将转为付费功能。
 
-### 提示词层（`-NoWatermark` 开关）
+```json
+{
+  "model": "sensenova-u1-fast",
+  "prompt": "A cat on a windowsill",
+  "size": "2048x2048",
+  "n": 1,
+  "watermark": false
+}
+```
 
-`compose-prompt.ps1` 提供 `-NoWatermark` 开关，会追加以下术语（**效果不可靠**，仅作为尝试）：
+**强制显式传入**：为避免未来默认值变更影响线上业务，**所有调用必须显式传入 `watermark` 参数**（默认 `false`），不得依赖服务端默认值。
+
+编排脚本通过 `-Watermark $false` 自动透传，无需手工修改请求体：
+
+```powershell
+& .\assets\scripts\call-genimage.ps1 -Prompt "A cat" -Size 2048x2048 -Watermark $false
+```
+
+### 提示词层（`-NoWatermark` 开关，仅补充）
+
+`compose-prompt.ps1 -NoWatermark` 会在 prompt 中加入反水印术语（**效果不可靠**，服务端水印是 post-processing 叠加，prompt 层面无法阻止）：
 
 ```
 no watermark, no logo, no text, no signature, clean image, unbranded, without watermark
 ```
 
-调用示例：
-```powershell
-& .\assets\scripts\compose-prompt.ps1 -Subject "a cat" -Scene "on a windowsill" -NoWatermark
-```
+### 后处理裁剪（付费后的兜底）
 
-### 后处理裁剪（推荐方案）
+如付费后无法关闭水印，可裁剪底部 5–10%：
 
 生成后用 PowerShell 裁剪右下角：
 

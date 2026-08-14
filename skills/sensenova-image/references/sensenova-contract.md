@@ -21,6 +21,7 @@
 | `prompt` | string | 是 | — | 图像描述文本，最大 4096 token |
 | `size` | string | 否 | `2752x1536` | 图像尺寸，11 种 2K 规格 |
 | `n` | integer | 否 | `1` | 生成图片数量 |
+| `watermark` | boolean | 否 | `true` | 是否叠加"日日新 sensenova"水印；**必须显式传 `false` 关闭**（当前免费公测，后续转为付费） |
 
 ## size 规格表（11 种比例 × 2 种档次 = 22 种精确像素）
 
@@ -115,6 +116,7 @@ curl -X POST https://token.sensenova.cn/v1/images/generations \
     "model": "sensenova-u1-fast",
     "prompt": "A serene mountain lake at dawn, misty, cinematic lighting, 4k",
     "size": "2752x1536",
-    "n": 1
+    "n": 1,
+    "watermark": false
   }'
 ```

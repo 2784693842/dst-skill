@@ -36,6 +36,11 @@
 
 .PARAMETER NoWatermark
     When -Compose is active, append anti-watermark terms to each composed prompt.
+    Legacy switch, kept for backward compatibility.
+
+.PARAMETER Watermark
+    Pass through to call-genimage.ps1: overlay the sensenova watermark.
+    Default $false (no watermark). Must be explicitly set.
 
 .EXAMPLE
     .\batch-genimage.ps1 -PromptFile prompts.txt -AspectRatio 16:9 -N 2
@@ -65,7 +70,9 @@ param(
 
     [switch]$Compose,
 
-    [switch]$NoWatermark
+    [switch]$NoWatermark,
+
+    [bool]$Watermark = $false
 )
 
 # ---------- Locate scripts ----------
@@ -162,7 +169,7 @@ foreach ($entry in $promptList) {
     }
 
     # Call API
-    $apiArgs = @("-Prompt", $prompt, "-Size", $effectiveSize, "-N", $N)
+    $apiArgs = @("-Prompt", $prompt, "-Size", $effectiveSize, "-N", $N, "-Watermark", $Watermark)
     $apiOut = & $callScript @apiArgs 2>&1 | Out-String
     if ($LASTEXITCODE -ne 0) {
         $items.Add([ordered]@{ seq = $seq; prompt = $prompt; status = "failed"; error = $apiOut; images = @() })

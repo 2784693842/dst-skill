@@ -33,6 +33,12 @@
 .PARAMETER BaseUrl
     API base URL; default https://token.sensenova.cn/v1.
 
+.PARAMETER Watermark
+    Whether to overlay the "sensenova" watermark on generated images.
+    Pass $false to disable (currently free public beta, will become paid).
+    MUST be explicitly set to avoid future default-value changes breaking production.
+    Default: $false.
+
 .PARAMETER ApiKey
     API key (optional). Falls back to the env chain:
       SN_KEY > SENSENOVA_KEY > SENSENOVA_API_KEY > SENSENOVA_SECRET_KEY > .env file.
@@ -66,6 +72,8 @@ param(
     [string]$Model = "sensenova-u1-fast",
 
     [string]$BaseUrl = "",
+
+    [bool]$Watermark = $false,
 
     [string]$ApiKey = ""
 )
@@ -150,6 +158,7 @@ $body = [ordered]@{
     prompt = $Prompt
     size   = $effectiveSize
     n      = $N
+    watermark = $Watermark
 } | ConvertTo-Json -Compress
 
 $headers = @{

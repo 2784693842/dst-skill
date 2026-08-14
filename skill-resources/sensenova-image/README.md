@@ -100,15 +100,17 @@ $prompt = & .\assets\scripts\compose-prompt.ps1 `
 
 ## 水印说明
 
-**SenseNova 服务端在所有生成图片右下角自动叠加"日日新 sensenova"水印，无任何 API 参数可关闭。**
+SenseNova 服务端默认在所有生成图片右下角叠加"日日新 sensenova"水印。
 
 | 方法 | 可靠性 |
 |---|---|
-| 后处理裁剪底部 5–10% | ✅ 100% |
+| API 参数 `watermark: false` | ✅ 官方支持（当前免费公测，后续转为付费） |
+| 后处理裁剪底部 5–10% | ✅ 100%（付费前的兜底手段） |
 | prompt 加入 `no watermark` 等术语 | ⚠️ 不可靠 |
-| API 参数 | ❌ 不可用 |
 
-`compose-prompt.ps1 -NoWatermark`（及 `genimage-variants.ps1 -NoWatermark`、`batch-genimage.ps1 -Compose -NoWatermark`）会追加反水印术语，但**仅作为尝试**，不可替代后处理裁剪。详见 `assets/prompt-templates.md` 的"水印处理"章节。
+**强制要求**：为避免未来默认值变更影响线上业务，**所有调用必须显式传入 `watermark` 参数**（默认 `false`），不得依赖服务端默认值。
+
+编排脚本通过 `-Watermark $false` 自动透传到 API；`compose-prompt.ps1 -NoWatermark` / `genimage-variants.ps1 -NoWatermark` / `batch-genimage.ps1 -Compose -NoWatermark` 等 prompt 层面手段仅作为补充保留，不再是主要控制点。详见 `assets/prompt-templates.md` 的"水印处理"章节。
 
 ## 生成图不入库
 
