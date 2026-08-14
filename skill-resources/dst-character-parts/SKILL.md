@@ -42,7 +42,7 @@ dst-assets-animation-atlas  (SCML 编译 / KTEX 打包 / char_sheet_gen.py 模�
 
 ### 1. 检查输入
 
-1. **查看原图**：用 `Read` 工具打开每张立绘或三视图（PNG/JPG/WEBP），**不要用 base64 手动解码**；图片会以视觉方式呈现，可看清尺寸和细节。若需要批量识图分析，调用 `sensenova-vision` skill 的 `caption-vision.ps1`（`-Type general`）。
+1. **查看原图**：**禁止用 `Read` 工具直接读取图片文件**（PNG/JPG/WEBP/GIF/BMP），否则会 base64 编码后灌入上下文导致 token 爆炸。所有识图/图像分析必须通过 `sensenova-vision` skill 的 `caption-vision.ps1` 脚本完成（自动压缩 + 外部 API 调用 + 纯文本 caption 返回）。调用方式见 `sensenova-vision` skill 文档。
 2. **查找目标人物的 `exported/<character>/<character>.scml`**。若已有 SCML，必须以它的 folder、file、尺寸和 pivot 为准。
 3. 若没有 SCML，先询问或选择最接近的官方/既有人物骨架作为模板，并明确这项假设（可参照 `dst-assets-animation-atlas` 的 `references/character-esc.md` 部位规范）。
 4. **保留原图，不在唯一原件上修改**；新内容写入独立工作目录。

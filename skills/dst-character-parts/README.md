@@ -77,6 +77,10 @@ python scripts/audit_parts.py "parts/" `
 | Pillow | `pip install Pillow`；本仓库已含 |
 | `xml.etree.ElementTree` | Python 标准库 |
 
+## ⚠️ 图片读取约束（强制）
+
+**禁止用 `Read` 工具直接读取图片文件**（PNG/JPG/WEBP/GIF/BMP）。所有识图/图像分析必须通过 `sensenova-vision` skill 的 `caption-vision.ps1` 脚本完成。
+
 ## 质量底线
 
 - 原图永不原地修改
