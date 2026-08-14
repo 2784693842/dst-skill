@@ -33,12 +33,20 @@ description: Use when generating images via SenseNova text-to-image API from a t
    - **推荐方式**：用 `resolve-size.ps1 -AspectRatio <比例> [-Tier 1k|2k]` 自动解析（如 `-AspectRatio 16:9 -Tier 2k` → `2752x1536`）
    - 用户未指定比例时给出建议而非擅自猜测；未指定档次默认 2K
    - 精确像素值见 `references/sensenova-contract.md` 的 BUCKETS 规格表（22 种）
-5. **调用 API**（按场景选入口）：
-   - **单图/多图**：`call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n>`
-     - 或 `call-genimage.ps1 -Prompt <prompt> -AspectRatio 16:9 -Tier 2k -N 1`（自动解析 size）
-     - API Key 自动从环境变量链获取：`SN_KEY` → `SENSENOVA_KEY` → `SENSENOVA_API_KEY` → `SENSENOVA_SECRET_KEY` → `.env` 文件
-   - **风格变体**：`genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-AspectRatio] [-Tier] [-DryRun]`
-   - **批量**：`batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-AspectRatio] [-Tier] [-DryRun]`
+5. **调用 API**（按场景选入口；**所有入口都须显式传 `-Watermark $false`**——脚本默认值虽是 `false`，但契约要求对外显式，不得依赖默认）：
+
+   ```powershell
+   # 单图/多图
+   & .\assets\scripts\call-genimage.ps1 -Prompt <prompt> -Size <size> -N <n> -Watermark $false
+   # 自动解析 size
+   & .\assets\scripts\call-genimage.ps1 -Prompt <prompt> -AspectRatio 16:9 -Tier 2k -N 1 -Watermark $false
+   # API Key 自动从环境变量链获取：SN_KEY → SENSENOVA_KEY → SENSENOVA_API_KEY → SENSENOVA_SECRET_KEY → .env
+
+   # 风格变体（内嵌透传 -Watermark）
+   & .\assets\scripts\genimage-variants.ps1 -Subject <主体> -Styles <键1,键2,...> [-Scene] [-Mood] [-Negative] [-AspectRatio] [-Tier] [-DryRun] -Watermark $false
+   # 批量
+   & .\assets\scripts\batch-genimage.ps1 -PromptFile <prompts.txt> [-Compose] [-AspectRatio] [-Tier] [-DryRun] -Watermark $false
+   ```
 6. **落地图片**：`image-save.ps1` 把返回的 **URL（主路径）** 或 **base64（回退）** 解码为本地 PNG，写入**工作区临时目录**（`<工作区>/output/`，由 `-OutputDir` 指定；不写 `.claude/`）；URL 下载带 User-Agent + 超时 + 2 次重试 + Content-Length 头校验（±1% 容差）；大图自动产出一份回显用缩放图（宽 ≤ 1200px）；落地后校验 PNG/JPEG/WebP 魔数，非图像字节直接报错。
 7. **回显**：**严禁用 `Read` 读取图片文件**（含 PNG/JPG/WebP）。回显方式：打印每张图的**绝对路径** + 生成参数 + 提示词摘要，让用户自行打开；多图/变体时附 `manifest.json` 路径方便追溯。
 8. **多图/批量**：打印所有图片路径列表；批量/变体模式自动写 `manifest.json`（含 seq/prompt/status/error/images）。

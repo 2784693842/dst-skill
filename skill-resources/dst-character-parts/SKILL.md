@@ -96,9 +96,11 @@ python scripts/scml_parts_plan.py <角色.scml> --output <parts_plan.json>
 
 ### 5. 对齐画布与 pivot
 
+**尺寸基准以 SCML 为准**：`parts_plan.json` 里的 width/height/pivot 来自 SCML，`audit_parts.py --strict` 也以它为唯一基准。若目标已有 PNG 与 SCML 尺寸不符（旧版模板），**先记录偏差、与用户确认统一基准，再拆件**，不要让拆出来的部件与 SCML 各说各话。
+
 替换既有部件时：
 
-1. 保持目标 PNG 的像素尺寸不变。
+1. 保持目标 PNG 的像素尺寸**与 SCML 完全一致**（不是"保持原 PNG 大小"，而是"保持 SCML 规格"）。
 2. 保持 SCML 中的 `pivot_x/pivot_y` 不变。
 3. 让关节锚点落在原模板相同位置，而不是把图像视觉居中。
 4. 需要放大或缩小时围绕关节锚点变换，不围绕画布中心变换。
